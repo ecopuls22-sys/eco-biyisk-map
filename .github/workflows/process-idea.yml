@@ -1,0 +1,170 @@
+name: Process New Idea
+
+on:
+  issues:
+    types: [opened, labeled]
+    
+jobs:
+  process-idea:
+    if: contains(github.event.issue.labels.*.name, 'idea')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: 📊 Parse issue data
+        id: parse-idea
+        run: |
+          # Извлекаем данные из body issue
+          BODY="${{ github.event.issue.body }}"
+          
+          # Парсим данные
+          TITLE=$(echo "$BODY" | grep -A1 "🏷️ Название идеи" | tail -1 | sed 's/<!--.*-->//g' | xargs)
+          if [ -z "$TITLE" ]; then
+            TITLE="${{ github.event.issue.title }}"
+          fi
+          
+          # Определяем категорию
+          if echo "$BODY" | grep -q "\[x\] Озеленение"; then
+            CATEGORY="greening"
+          elif echo "$BODY" | grep -q "\[x\] Благоустройство"; then
+            CATEGORY="improvement"
+          elif echo "$BODY" | grep -q "\[x\] Экология"; then
+            CATEGORY="ecology"
+          elif echo "$BODY" | grep -q "\[x\] Инфраструктура"; then
+            CATEGORY="infrastructure"
+          elif echo "$BODY" | grep -q "\[x\] Мероприятия"; then
+            CATEGORY="events"
+          elif echo "$BODY" | grep -q "\[x\] Социальные проекты"; then
+            CATEGORY="social"
+          else
+            CATEGORY="other"
+          fi
+          
+          # Извлекаем координаты (если есть)
+          LAT=$(echo "$BODY" | grep -A1 "Широта" | tail -1 | sed 's/<!--.*-->//g' | grep -o '[0-9]*\.[0-9]*' || echo "52.5186")
+          LON=$(echo "$BODY" | grep -A1 "Долгота" | tail -1 | sed 's/<!--.*-->//g' | grep -o '[0-9]*\.[0-9]*' || echo "85.2076")
+          
+          # Извлекаем бюджет
+          BUDGET=$(echo "$BODY" | grep -A1 "Стоимость реализации" | tail -1 | sed 's/<!--.*-->//g' | grep -o '[0-9]*' || echo "0")
+          
+          # Извлекаем описание
+          DESCRIPTION=$(echo "$BODY" | sed -n '/📝 Подробное описание идеи/,/🎯 Цели и задачи/p' | head -n -1 | tail -n +2 | xargs)
+          
+          # Извлекаем цели
+          GOALS=$(echo "$BODY" | sed -n '/🎯 Цели и задачи/,/✅ Преимущества и польза/p' | head -n -1 | tail -n +2 | xargs)
+          
+          # Генерируем ID
+          ID=$(date +%s)
+          
+          # Сохраняем в output
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          echo "category=$CATEGORY" >> $GITHUB_OUTPUT
+          echo "lat=$LAT" >> $GITHUB_OUTPUT
+          echo "lon=$LON" >> $GITHUB_OUTPUT
+          echo "budget=$BUDGET" >> $GITHUB_OUTPUT
+          echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
+          echo "goals=$GOALS" >> $GITHUB_OUTPUT
+          echo "id=$ID" >> $GITHUB_OUTPUT
+          echo "author=${{ github.event.issue.user.login }}" >> $GITHUB_OUTPUT
+          
+      - name: 📁 Read existing ideas
+        id: read-ideas
+        run: |
+          if [ -f "data/ideas.json" ]; then
+            DATA=$(cat data/ideas.json)
+          else
+            DATA="[]"
+          fi
+          echo "data=$DATA" >> $GITHUB_OUTPUT
+          
+      - name: ✨ Create new idea
+        id: create-idea
+        run: |
+          # Создаем объект идеи
+          NEW_IDEA=$(jq -n \
+            --arg id "${{ steps.parse-idea.outputs.id }}" \
+            --arg title "${{ steps.parse-idea.outputs.title }}" \
+            --arg category "${{ steps.parse-idea.outputs.category }}" \
+            --arg description "${{ steps.parse-idea.outputs.description }}" \
+            --arg goals "${{ steps.parse-idea.outputs.goals }}" \
+            --arg budget "${{ steps.parse-idea.outputs.budget }}" \
+            --arg lat "${{ steps.parse-idea.outputs.lat }}" \
+            --arg lon "${{ steps.parse-idea.outputs.lon }}" \
+            --arg author "${{ steps.parse-idea.outputs.author }}" \
+            '{
+              id: ($id | tonumber),
+              title: $title,
+              category: $category,
+              description: $description,
+              goals: $goals,
+              author: $author,
+              authorRole: "resident",
+              status: "new",
+              votes: { up: 0, down: 0 },
+              comments: 0,
+              budget: ($budget | tonumber),
+              location: [$lat | tonumber, $lon | tonumber],
+              date: (now | strftime("%Y-%m-%d")),
+              expertReview: null,
+              votingId: null,
+              issue_number: ${{ github.event.issue.number }}
+            }')
+          
+          echo "new_idea=$NEW_IDEA" >> $GITHUB_OUTPUT
+          
+      - name: 🔄 Update ideas.json
+        run: |
+          # Объединяем старые и новые данные
+          UPDATED_DATA=$(echo '${{ steps.read-ideas.outputs.data }}' | jq \
+            --argjson new "${{ steps.create-idea.outputs.new_idea }}" \
+            '. + [$new]')
+          
+          # Сохраняем в файл
+          echo "$UPDATED_DATA" > data/ideas.json
+          
+          # Форматируем JSON для красоты
+          jq '.' data/ideas.json > temp.json && mv temp.json data/ideas.json
+          
+      - name: 💾 Commit and push
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add data/ideas.json
+          git commit -m "💡 Добавлена идея: ${{ steps.parse-idea.outputs.title }} (issue #${{ github.event.issue.number }})"
+          git push
+          
+      - name: 💬 Comment on issue
+        run: |
+          COMMENT="💡 Идея **${{ steps.parse-idea.outputs.title }}** успешно добавлена в банк идей!\n\n**Детали:**\n- Категория: ${{ steps.parse-idea.outputs.category }}\n- Бюджет: ${{ steps.parse-idea.outputs.budget }} руб.\n- Координаты: ${{ steps.parse-idea.outputs.lat }}, ${{ steps.parse-idea.outputs.lon }}\n\n**Процесс рассмотрения:**\n1. 🕐 **Модерация** (3-5 дней) - проверка на соответствие правилам\n2. 🔍 **Экспертная оценка** (7-14 дней) - оценка реализуемости\n3. 🗳️ **Голосование** (14-30 дней) - общественное голосование\n4. ✅ **Реализация** - включение в план работ\n\nСледите за статусом в этом issue!"
+          
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            -d "{\"body\":\"$COMMENT\"}"
+            
+      - name: 🏷️ Add status label
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/labels \
+            -d '{"labels":["status:new"]}'
+            
+      - name: 📧 Check idea limit
+        run: |
+          # Здесь могла бы быть проверка лимита идей пользователя
+          # Но для демо просто оставляем комментарий
+          echo "Проверка лимита идей для пользователя ${{ github.event.issue.user.login }}"
