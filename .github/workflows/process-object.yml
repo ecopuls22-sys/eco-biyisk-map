@@ -1,0 +1,150 @@
+name: Process New Object
+
+on:
+  issues:
+    types: [opened, labeled]
+    
+jobs:
+  process-object:
+    if: contains(github.event.issue.labels.*.name, 'new-object')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: 📊 Parse issue data
+        id: parse
+        run: |
+          # Извлекаем данные из body issue
+          BODY="${{ github.event.issue.body }}"
+          
+          # Простой парсинг markdown (можно улучшить)
+          NAME=$(echo "$BODY" | grep -A1 "🏷️ Название объекта" | tail -1 | sed 's/<!--.*-->//g' | xargs)
+          if [ -z "$NAME" ]; then
+            NAME="${{ github.event.issue.title }}"
+          fi
+          
+          # Определяем тип объекта
+          if echo "$BODY" | grep -q "\[x\] Дерево"; then
+            TYPE="tree"
+          elif echo "$BODY" | grep -q "\[x\] Газон"; then
+            TYPE="lawn"
+          elif echo "$BODY" | grep -q "\[x\] Кустарник"; then
+            TYPE="bush"
+          else
+            TYPE="tree"
+          fi
+          
+          # Определяем состояние
+          if echo "$BODY" | grep -q "\[x\] Хорошее"; then
+            CONDITION="good"
+          elif echo "$BODY" | grep -q "\[x\] Нормальное"; then
+            CONDITION="normal"
+          elif echo "$BODY" | grep -q "\[x\] Плохое"; then
+            CONDITION="bad"
+          else
+            CONDITION="normal"
+          fi
+          
+          # Извлекаем координаты
+          LAT=$(echo "$BODY" | grep -A1 "Широта" | tail -1 | sed 's/<!--.*-->//g' | grep -o '[0-9]*\.[0-9]*' || echo "52.5186")
+          LON=$(echo "$BODY" | grep -A1 "Долгота" | tail -1 | sed 's/<!--.*-->//g' | grep -o '[0-9]*\.[0-9]*' || echo "85.2076")
+          
+          # Извлекаем описание
+          DESCRIPTION=$(echo "$BODY" | sed -n '/📝 Описание/,/📸 Фотография/p' | head -n -1 | tail -n +2 | xargs)
+          
+          # Генерируем ID
+          ID=$(date +%s)
+          
+          # Сохраняем в output
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+          echo "type=$TYPE" >> $GITHUB_OUTPUT
+          echo "condition=$CONDITION" >> $GITHUB_OUTPUT
+          echo "lat=$LAT" >> $GITHUB_OUTPUT
+          echo "lon=$LON" >> $GITHUB_OUTPUT
+          echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
+          echo "id=$ID" >> $GITHUB_OUTPUT
+          
+      - name: 📁 Read existing data
+        id: read-data
+        run: |
+          if [ -f "data/objects.json" ]; then
+            DATA=$(cat data/objects.json)
+          else
+            DATA="[]"
+          fi
+          echo "data=$DATA" >> $GITHUB_OUTPUT
+          
+      - name: ✨ Create new object
+        id: create-object
+        run: |
+          # Создаем объект в формате JSON
+          NEW_OBJECT=$(jq -n \
+            --arg id "${{ steps.parse.outputs.id }}" \
+            --arg name "${{ steps.parse.outputs.name }}" \
+            --arg type "${{ steps.parse.outputs.type }}" \
+            --arg condition "${{ steps.parse.outputs.condition }}" \
+            --arg lat "${{ steps.parse.outputs.lat }}" \
+            --arg lon "${{ steps.parse.outputs.lon }}" \
+            --arg description "${{ steps.parse.outputs.description }}" \
+            '{
+              id: ($id | tonumber),
+              name: $name,
+              type: $type,
+              condition: $condition,
+              coords: [$lat | tonumber, $lon | tonumber],
+              description: $description,
+              date: (now | strftime("%Y-%m-%d"))
+            }')
+          
+          echo "new_object=$NEW_OBJECT" >> $GITHUB_OUTPUT
+          
+      - name: 🔄 Update objects.json
+        run: |
+          # Объединяем старые и новые данные
+          UPDATED_DATA=$(echo '${{ steps.read-data.outputs.data }}' | jq \
+            --argjson new "${{ steps.create-object.outputs.new_object }}" \
+            '. + [$new]')
+          
+          # Сохраняем в файл
+          echo "$UPDATED_DATA" > data/objects.json
+          
+          # Форматируем JSON для красоты
+          jq '.' data/objects.json > temp.json && mv temp.json data/objects.json
+          
+      - name: 💾 Commit and push
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add data/objects.json
+          git commit -m "🌳 Добавлен объект: ${{ steps.parse.outputs.name }} (из issue #${{ github.event.issue.number }})"
+          git push
+          
+      - name: 💬 Comment on issue
+        run: |
+          COMMENT="✅ Объект **${{ steps.parse.outputs.name }}** успешно добавлен на карту!\n\n**Детали:**\n- Тип: ${{ steps.parse.outputs.type }}\n- Состояние: ${{ steps.parse.outputs.condition }}\n- Координаты: ${{ steps.parse.outputs.lat }}, ${{ steps.parse.outputs.lon }}\n\nКарта автоматически обновится в течение нескольких минут."
+          
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            -d "{\"body\":\"$COMMENT\"}"
+            
+      - name: 🔒 Close issue
+        run: |
+          curl -X PATCH \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }} \
+            -d '{"state":"closed", "labels":["added-to-map"]}'
