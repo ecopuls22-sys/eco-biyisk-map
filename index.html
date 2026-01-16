@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Экологическая карта Бийска</title>
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=3dcd9dd7-c0b7-4ca6-b3d7-93a7141fc60a&lang=ru_RU" type="text/javascript"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌳</text></svg>">
+</head>
+<body>
+<!-- Фиксированное верхнее меню -->
+<header class="header">
+    <div class="header__container">
+        <!-- Логотип слева -->
+        <div class="header__logo">
+            <a href="/">
+                <i class="fas fa-tree"></i>
+                <span>ЭкоБийск</span>
+            </a>
+        </div>
+        
+        <!-- Основная навигация по центру -->
+        <nav class="header__nav">
+            <ul class="nav__list">
+                <li><a href="#" class="nav__link active"><i class="fas fa-map"></i> Карта</a></li>
+                <li><a href="#" class="nav__link" id="showObjectsBtn"><i class="fas fa-list"></i> Объекты</a></li>
+                <li><a href="https://github.com/YOUR_USERNAME/eco-biyisk-map/issues/new?template=new-object.md" 
+                       class="nav__link" target="_blank"><i class="fas fa-plus-circle"></i> Добавить</a></li>
+                <li><a href="https://github.com/YOUR_USERNAME/eco-biyisk-map/issues" 
+                       class="nav__link" target="_blank"><i class="fas fa-tasks"></i> Заявки</a></li>
+                <li><a href="#" class="nav__link" id="refreshBtn"><i class="fas fa-sync-alt"></i> Обновить</a></li>
+            </ul>
+        </nav>
+        
+        <!-- Правая часть -->
+        <div class="header__actions">
+            <!-- Информация о данных -->
+            <div class="data-info">
+                <span id="lastUpdate">Загрузка...</span>
+                <span class="objects-count">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span id="totalObjects">0</span>
+                </span>
+            </div>
+            
+            <!-- Меню пользователя -->
+            <div class="user-menu">
+                <span class="user-name">Гость</span>
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+    <!-- Карта -->
+    <main class="main">
+        <div id="map"></div>
+    </main>
+
+<!-- Легенда карты -->
+<div class="map-legend">
+    <div class="legend__header">
+        <h4><i class="fas fa-map-legend"></i> Легенда:</h4>
+        <div class="legend-toggle" id="legendToggle">
+            <i class="fas fa-chevron-up"></i>
+        </div>
+    </div>
+    
+    <div class="legend__body" id="legendBody">
+        <div class="legend__category">
+            <h5><i class="fas fa-tree"></i> Растительность:</h5>
+            <div class="legend__items">
+                <div class="legend__item" data-type="tree">
+                    <div class="legend__color" style="background-color: #2E7D32;"></div>
+                    <span>Деревья</span>
+                    <span class="legend__count" id="treeCount">0</span>
+                </div>
+                <div class="legend__item" data-type="lawn">
+                    <div class="legend__color" style="background-color: #4CAF50;"></div>
+                    <span>Газоны</span>
+                    <span class="legend__count" id="lawnCount">0</span>
+                </div>
+                <div class="legend__item" data-type="bush">
+                    <div class="legend__color" style="background-color: #8BC34A;"></div>
+                    <span>Кустарники</span>
+                    <span class="legend__count" id="bushCount">0</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="legend__category">
+            <h5><i class="fas fa-heartbeat"></i> Состояние:</h5>
+            <div class="legend__items">
+                <div class="legend__item">
+                    <div class="legend__icon"><i class="fas fa-smile" style="color: #4CAF50;"></i></div>
+                    <span>Хорошее</span>
+                </div>
+                <div class="legend__item">
+                    <div class="legend__icon"><i class="fas fa-meh" style="color: #FF9800;"></i></div>
+                    <span>Нормальное</span>
+                </div>
+                <div class="legend__item">
+                    <div class="legend__icon"><i class="fas fa-frown" style="color: #F44336;"></i></div>
+                    <span>Плохое</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="legend__filters">
+            <h5><i class="fas fa-filter"></i> Фильтры:</h5>
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-filter="all">Все</button>
+                <button class="filter-btn" data-filter="tree">Деревья</button>
+                <button class="filter-btn" data-filter="lawn">Газоны</button>
+                <button class="filter-btn" data-filter="bush">Кустарники</button>
+            </div>
+        </div>
+        
+        <!-- Инструкция -->
+        <div class="legend__instructions">
+            <h5><i class="fas fa-info-circle"></i> Как добавить объект?</h5>
+            <p>1. Нажмите "Добавить" в меню</p>
+            <p>2. Заполните форму на GitHub</p>
+            <p>3. Администратор проверит и добавит</p>
+        </div>
+    </div>
+</div>
+
+    <!-- Панель объектов -->
+    <div class="objects-panel" id="objectsPanel">
+        <div class="objects-panel__header">
+            <h3><i class="fas fa-list"></i> Объекты на карте</h3>
+            <button class="close-btn" id="closeObjectsPanel">&times;</button>
+        </div>
+        <div class="objects-panel__body">
+            <div class="objects-stats">
+                <div class="stat-item">
+                    <i class="fas fa-tree"></i>
+                    <span>Деревья: <strong id="statsTreeCount">0</strong></span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-seedling"></i>
+                    <span>Газоны: <strong id="statsLawnCount">0</strong></span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-leaf"></i>
+                    <span>Кустарники: <strong id="statsBushCount">0</strong></span>
+                </div>
+            </div>
+            <div class="objects-search">
+                <input type="text" id="searchObjects" placeholder="Поиск объектов...">
+            </div>
+            <div class="objects-list" id="objectsList">
+                <!-- Список объектов будет здесь -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Кнопка "Найти меня" -->
+    <button class="locate-btn" id="locateBtn" title="Определить мое местоположение">
+        <i class="fas fa-location-arrow"></i>
+    </button>
+
+    <!-- Кнопка "Добавить объект" -->
+    <button class="add-btn" id="addBtn" title="Добавить новый объект">
+        <i class="fas fa-plus"></i>
+        <span>Добавить</span>
+    </button>
+
+    <!-- Уведомления -->
+    <div class="notification" id="notification"></div>
+
+    <!-- Модальное окно информации -->
+    <div class="modal" id="infoModal">
+        <div class="modal__content">
+            <h3><i class="fas fa-info-circle"></i> Как добавить объект?</h3>
+            <p>Чтобы добавить новую точку на карту:</p>
+            <ol>
+                <li>Нажмите кнопку "Добавить" внизу экрана</li>
+                <li>Откроется форма на GitHub</li>
+                <li>Заполните все обязательные поля</li>
+                <li>Нажмите "Submit new issue"</li>
+            </ol>
+            <p>Администратор проверит заявку и добавит объект на карту.</p>
+            <button class="btn btn--primary" id="closeModal">Понятно</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
