@@ -251,4 +251,140 @@ class VotingSystem {
                             <div class="result-item ${index < 3 ? 'podium' : ''}">
                                 <div class="result-rank">
                                     ${medal} ${index + 1} место
-                               
+                                </div>
+                                <div class="result-content">
+                                    <div class="result-header">
+                                        <span>${option.text}</span>
+                                        <span>${option.votes} голосов (${percent.toFixed(1)}%)</span>
+                                    </div>
+                                    <div class="result-bar">
+                                        <div class="result-fill" style="width: ${percent}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    addVotingEventListeners() {
+        // Выбор варианта голосования
+        document.querySelectorAll('.voting-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                if (!authSystem.checkPermission('vote')) {
+                    authSystem.showNotification('Для голосования выберите роль "Житель" или выше', 'error');
+                    return;
+                }
+                
+                const votingCard = e.currentTarget.closest('.voting-card');
+                const votingId = parseInt(votingCard.dataset.id);
+                const voting = this.votings.find(v => v.id === votingId);
+                
+                if (voting.status !== 'active') return;
+                if (authSystem.hasVoted(votingId)) return;
+                
+                // Снимаем выделение с других вариантов
+                votingCard.querySelectorAll('.voting-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                
+                // Выделяем выбранный
+                e.currentTarget.classList.add('selected');
+                
+                // Активируем кнопку голосования
+                const submitBtn = votingCard.querySelector('.btn-submit-vote');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                }
+            });
+        });
+        
+        // Отправка голоса
+        document.querySelectorAll('.btn-submit-vote').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const votingId = parseInt(e.currentTarget.dataset.id);
+                this.submitVote(votingId);
+            });
+        });
+    }
+    
+    submitVote(votingId) {
+        const votingCard = document.querySelector(`.voting-card[data-id="${votingId}"]`);
+        if (!votingCard) return;
+        
+        const selectedOption = votingCard.querySelector('.voting-option.selected');
+        if (!selectedOption) {
+            authSystem.showNotification('Выберите вариант для голосования', 'error');
+            return;
+        }
+        
+        const optionId = parseInt(selectedOption.dataset.option);
+        const voting = this.votings.find(v => v.id === votingId);
+        
+        if (!voting || voting.status !== 'active') {
+            authSystem.showNotification('Голосование завершено или не активно', 'error');
+            return;
+        }
+        
+        if (authSystem.hasVoted(votingId)) {
+            authSystem.showNotification('Вы уже голосовали в этом опросе', 'warning');
+            return;
+        }
+        
+        // Обновляем статистику
+        const option = voting.options.find(o => o.id === optionId);
+        if (option) {
+            option.votes++;
+            voting.totalVotes++;
+        }
+        
+        // Регистрируем голос
+        authSystem.registerVote(votingId, optionId);
+        
+        // Обновляем интерфейс
+        this.updateStats();
+        this.renderVotings();
+        
+        authSystem.showNotification('Ваш голос учтён!', 'success');
+        
+        // Сохраняем в localStorage для демо
+        this.saveToLocalStorage();
+    }
+    
+    saveToLocalStorage() {
+        localStorage.setItem('eco_votings_data', JSON.stringify(this.votings));
+    }
+    
+    updateStats() {
+        const active = this.votings.filter(v => v.status === 'active').length;
+        const coming = this.votings.filter(v => v.status === 'coming').length;
+        const finished = this.votings.filter(v => v.status === 'finished').length;
+        const total = this.votings.length;
+        
+        document.getElementById('votingActive')?.textContent = active;
+        document.getElementById('votingComing')?.textContent = coming;
+        document.getElementById('votingFinished')?.textContent = finished;
+        document.getElementById('votingTotal')?.textContent = total;
+    }
+    
+    // Методы для администратора
+    openCreateVotingModal() {
+        if (!authSystem.checkPermission('create_voting')) {
+            authSystem.showNotification('Только администраторы могут создавать голосования', 'error');
+            return;
+        }
+        
+        // Здесь будет модальное окно создания голосования
+        authSystem.showNotification('Функция создания голосований в разработке', 'info');
+    }
+}
+
+// Инициализация системы голосований
+let votingSystem;
+
+document.addEventListener('DOMContentLoaded', () => {
+    votingSystem = new VotingSystem();
+    window.votingSystem = votingSystem;
+});
