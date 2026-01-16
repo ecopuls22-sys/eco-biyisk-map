@@ -1,36 +1,38 @@
+// Основной файл с обновленной логикой
+
 // ============================================================================
-// КОНФИГУРАЦИЯ ПРОЕКТА
+// КОНФИГУРАЦИЯ
 // ============================================================================
 const CONFIG = {
-    GITHUB_USERNAME: 'YOUR_GITHUB_USERNAME', // ⬅️ ЗАМЕНИТЕ НА ВАШ ЛОГИН!
+    GITHUB_USERNAME: 'ecopuls22-sys',
     REPO_NAME: 'eco-biyisk-map',
-    DATA_FILE: 'data/objects.json',
-    ISSUES_URL: 'https://github.com/YOUR_USERNAME/eco-biyisk-map/issues/new?template=new-object.md'
+    DATA_FILES: {
+        objects: 'data/objects.json',
+        problems: 'data/problems.json',
+        ideas: 'data/ideas.json',
+        votes: 'data/votes.json'
+    }
 };
-
-// Динамически обновляем ISSUES_URL
-CONFIG.ISSUES_URL = `https://github.com/${CONFIG.GITHUB_USERNAME}/${CONFIG.REPO_NAME}/issues/new?template=new-object.md`;
-const DATA_URL = `https://raw.githubusercontent.com/${CONFIG.GITHUB_USERNAME}/${CONFIG.REPO_NAME}/main/${CONFIG.DATA_FILE}`;
 
 // ============================================================================
 // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
 // ============================================================================
 let myMap;
 let currentObjects = [];
-let userPlacemark = null;
-let lastUpdateTime = null;
+let currentProblems = [];
+let currentScreen = 'map';
 
 // ============================================================================
-// ОСНОВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ
+// ИНИЦИАЛИЗАЦИЯ
 // ============================================================================
 ymaps.ready(async function init() {
-    console.log('🌳 Экологическая карта Бийска - Загрузка...');
+    console.log('🌳 Умный город Бийск - Загрузка...');
     
     // Создаем карту
     myMap = new ymaps.Map('map', {
-        center: [52.5186, 85.2076], // Центр Бийска
+        center: [52.5186, 85.2076],
         zoom: 13,
-        controls: ['zoomControl', 'fullscreenControl', 'typeSelector']
+        controls: ['zoomControl', 'fullscreenControl']
     });
     
     // Настройка элементов управления
@@ -44,467 +46,275 @@ ymaps.ready(async function init() {
     });
     
     // Загружаем данные
-    await loadData();
+    await loadAllData();
     
     // Инициализация интерфейса
     initializeUI();
     
-    // Периодическое обновление данных (каждые 5 минут)
-    setInterval(loadData, 5 * 60 * 1000);
-    
-    console.log('✅ Карта готова! Объектов:', currentObjects.length);
+    console.log('✅ Система готова!');
 });
 
 // ============================================================================
 // ЗАГРУЗКА ДАННЫХ
 // ============================================================================
-async function loadData() {
+async function loadAllData() {
+    await Promise.all([
+        loadObjects(),
+        loadProblems()
+    ]);
+    
+    updateStatistics();
+}
+
+async function loadObjects() {
     try {
-        showNotification('Обновляем данные...', 'info');
-        
-        // Добавляем случайный параметр для избежания кэширования
-        const url = `${DATA_URL}?t=${Date.now()}&rand=${Math.random()}`;
-        
+        const url = buildDataUrl(CONFIG.DATA_FILES.objects);
         const response = await fetch(url);
         
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+        if (response.ok) {
+            currentObjects = await response.json();
+            renderObjectsOnMap();
         }
-        
-        const data = await response.json();
-        
-        // Проверяем, изменились ли данные
-        if (JSON.stringify(currentObjects) !== JSON.stringify(data)) {
-            currentObjects = data;
-            
-            // Очищаем карту
-            myMap.geoObjects.removeAll();
-            
-            // Добавляем все объекты
-            data.forEach(obj => {
-                addObjectToMap(obj);
-            });
-            
-            // Обновляем интерфейс
-            updateObjectsList();
-            updateStatistics();
-            
-            lastUpdateTime = new Date();
-            updateLastUpdateTime();
-            
-            console.log(`✅ Данные обновлены: ${data.length} объектов`);
-            showNotification(`Данные обновлены (${data.length} объектов)`, 'success');
-        } else {
-            console.log('📭 Данные не изменились');
-            showNotification('Данные актуальны', 'info');
-        }
-        
     } catch (error) {
-        console.error('❌ Ошибка загрузки:', error);
-        
-        // Пробуем загрузить из localStorage как запасной вариант
-        const localData = localStorage.getItem('eco_biysk_backup');
-        if (localData) {
-            currentObjects = JSON.parse(localData);
-            showNotification('Используем локальную копию данных', 'warning');
-        } else {
-            // Используем демо-данные
-            currentObjects = getDefaultObjects();
-            showNotification('Используем демо-данные', 'info');
-        }
-        
-        // Очищаем и перерисовываем
-        myMap.geoObjects.removeAll();
-        currentObjects.forEach(obj => addObjectToMap(obj));
-        updateObjectsList();
-        updateStatistics();
-        
-        lastUpdateTime = new Date();
-        updateLastUpdateTime();
+        console.error('Ошибка загрузки объектов:', error);
+        currentObjects = getDefaultObjects();
+        renderObjectsOnMap();
     }
+}
+
+async function loadProblems() {
+    try {
+        const url = buildDataUrl(CONFIG.DATA_FILES.problems);
+        const response = await fetch(url);
+        
+        if (response.ok) {
+            currentProblems = await response.json();
+            renderProblemsOnMap();
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки проблем:', error);
+        currentProblems = getDefaultProblems();
+        renderProblemsOnMap();
+    }
+}
+
+function buildDataUrl(filePath) {
+    return `https://raw.githubusercontent.com/${CONFIG.GITHUB_USERNAME}/${CONFIG.REPO_NAME}/main/${filePath}?t=${Date.now()}`;
 }
 
 // ============================================================================
 // РАБОТА С КАРТОЙ
 // ============================================================================
+function renderObjectsOnMap() {
+    // Очищаем старые объекты
+    myMap.geoObjects.removeAll();
+    
+    // Добавляем объекты
+    currentObjects.forEach(obj => {
+        addObjectToMap(obj);
+    });
+    
+    // Добавляем проблемы
+    currentProblems.forEach(problem => {
+        addProblemToMap(problem);
+    });
+}
+
 function addObjectToMap(obj) {
-    const iconColor = getColorByType(obj.type);
-    const iconGlyph = getIconByType(obj.type);
+    const placemark = createPlacemark(obj.coords, {
+        content: createObjectBalloon(obj),
+        hint: obj.name
+    }, {
+        preset: 'islands#circleIcon',
+        iconColor: getColorByType(obj.type),
+        iconGlyph: getIconByType(obj.type)
+    });
     
-    // Создаем контент для балуна
-    const balloonContent = `
-        <div class="balloon-content">
-            <div class="balloon-header">
-                <h4>${obj.name}</h4>
-                <span class="object-type ${obj.type}">${getTypeName(obj.type)}</span>
-            </div>
-            <div class="balloon-body">
-                ${obj.description ? `<p><i class="fas fa-info-circle"></i> ${obj.description}</p>` : ''}
-                <p><i class="fas fa-map-marker-alt"></i> Координаты: ${obj.coords[0].toFixed(6)}, ${obj.coords[1].toFixed(6)}</p>
-                <p><i class="fas fa-heartbeat" style="color: ${getConditionColor(obj.condition)}"></i> Состояние: ${getConditionName(obj.condition)}</p>
-                ${obj.date ? `<p><i class="fas fa-calendar"></i> Добавлено: ${obj.date}</p>` : ''}
-            </div>
-        </div>
-    `;
-    
-    const placemark = new ymaps.Placemark(
-        obj.coords,
-        {
-            balloonContent: balloonContent,
-            hintContent: obj.name
-        },
-        {
-            preset: 'islands#circleIcon',
-            iconColor: iconColor,
-            iconGlyph: iconGlyph,
-            balloonCloseButton: true,
-            hideIconOnBalloonOpen: false
-        }
-    );
-    
-    // Сохраняем ссылку на метку
-    obj.placemark = placemark;
-    
-    // Добавляем на карту
     myMap.geoObjects.add(placemark);
 }
 
+function addProblemToMap(problem) {
+    const placemark = createPlacemark(problem.location, {
+        content: createProblemBalloon(problem),
+        hint: problem.title
+    }, {
+        preset: 'islands#circleIcon',
+        iconColor: getProblemColor(problem.status),
+        iconGlyph: 'exclamation'
+    });
+    
+    myMap.geoObjects.add(placemark);
+}
+
+function createPlacemark(coords, properties, options) {
+    return new ymaps.Placemark(coords, properties, options);
+}
+
 // ============================================================================
-// ИНТЕРФЕЙС ПОЛЬЗОВАТЕЛЯ
+// ИНТЕРФЕЙС
 // ============================================================================
 function initializeUI() {
-    // Кнопка показа объектов
-    document.getElementById('showObjectsBtn').addEventListener('click', function() {
-        document.getElementById('objectsPanel').classList.add('active');
-        updateObjectsList();
-    });
+    // Навигация
+    setupNavigation();
     
-    // Кнопка закрытия панели объектов
-    document.getElementById('closeObjectsPanel').addEventListener('click', function() {
-        document.getElementById('objectsPanel').classList.remove('active');
-    });
-    
-    // Кнопка обновления данных
-    document.getElementById('refreshBtn').addEventListener('click', async function() {
-        this.classList.add('rotating');
-        await loadData();
-        setTimeout(() => this.classList.remove('rotating'), 500);
-    });
-    
-    // Кнопка "Добавить"
-    document.getElementById('addBtn').addEventListener('click', function() {
-        // Открываем форму на GitHub
-        window.open(CONFIG.ISSUES_URL, '_blank');
-        
-        // Показываем инструкцию
-        document.getElementById('infoModal').style.display = 'flex';
-    });
-    
-    // Закрытие модального окна
-    document.getElementById('closeModal').addEventListener('click', function() {
-        document.getElementById('infoModal').style.display = 'none';
-    });
-    
-    // Закрытие модального окна по клику вне его
-    document.getElementById('infoModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            this.style.display = 'none';
-        }
+    // Кнопка обновления
+    document.getElementById('refreshBtn').addEventListener('click', async () => {
+        await loadAllData();
+        showNotification('Данные обновлены', 'success');
     });
     
     // Кнопка "Найти меня"
     document.getElementById('locateBtn').addEventListener('click', locateUser);
     
-    // Фильтры в легенде
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            filterObjects(this.dataset.filter);
-        });
-    });
+    // Легенда
+    setupLegend();
     
-    // Клик по элементам легенды
-    document.querySelectorAll('.legend__item[data-type]').forEach(item => {
-        item.addEventListener('click', function() {
-            const type = this.dataset.type;
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            const filterBtn = document.querySelector(`.filter-btn[data-filter="${type}"]`);
-            if (filterBtn) {
-                filterBtn.classList.add('active');
-                filterObjects(type);
-            }
-        });
-    });
+    // Система проблем
+    setupProblemSystem();
+}
+
+function setupNavigation() {
+    const navItems = {
+        navMap: 'map',
+        navObjects: 'objects',
+        navProblems: 'problems',
+        navIdeas: 'ideas',
+        navVoting: 'voting'
+    };
     
-    // Сворачивание легенды
-    const legendToggle = document.getElementById('legendToggle');
-    if (legendToggle) {
-        legendToggle.addEventListener('click', function() {
-            const body = document.getElementById('legendBody');
-            const icon = this.querySelector('i');
-            if (body.style.display === 'none') {
-                body.style.display = 'block';
-                icon.classList.remove('fa-chevron-down');
-                icon.classList.add('fa-chevron-up');
-            } else {
-                body.style.display = 'none';
-                icon.classList.remove('fa-chevron-up');
-                icon.classList.add('fa-chevron-down');
-            }
-        });
-    }
-    
-    // Поиск объектов
-    const searchInput = document.getElementById('searchObjects');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            filterObjectsBySearch(this.value);
-        });
-    }
-    
-    // Сохраняем ссылки в навигации
-    document.querySelectorAll('.nav__link[href*="github.com"]').forEach(link => {
-        const href = link.getAttribute('href');
-        link.setAttribute('href', href.replace('YOUR_USERNAME', CONFIG.GITHUB_USERNAME));
-    });
-    
-    // Добавляем CSS для вращения
-    const style = document.createElement('style');
-    style.textContent = `
-        .rotating {
-            animation: rotate 0.5s linear;
+    Object.entries(navItems).forEach(([navId, screen]) => {
+        const element = document.getElementById(navId);
+        if (element) {
+            element.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchScreen(screen);
+                
+                // Обновляем активный пункт меню
+                document.querySelectorAll('.nav__link').forEach(link => {
+                    link.classList.remove('active');
+                });
+                element.classList.add('active');
+            });
         }
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-    `;
-    document.head.appendChild(style);
+    });
+}
+
+function switchScreen(screenName) {
+    // Скрываем все экраны
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
+    
+    // Показываем нужный экран
+    const targetScreen = document.getElementById(`screen${screenName.charAt(0).toUpperCase() + screenName.slice(1)}`);
+    if (targetScreen) {
+        targetScreen.classList.add('active');
+        currentScreen = screenName;
+    }
 }
 
 // ============================================================================
-// ФУНКЦИИ ИНТЕРФЕЙСА
+// СИСТЕМА ПРОБЛЕМ
 // ============================================================================
-function updateObjectsList() {
-    const objectsList = document.getElementById('objectsList');
-    if (!objectsList) return;
+function setupProblemSystem() {
+    const reportBtn = document.getElementById('reportProblemBtn');
+    const addProblemBtn = document.getElementById('addProblemBtn');
+    const problemModal = document.getElementById('problemModal');
     
-    objectsList.innerHTML = '';
-    
-    currentObjects.forEach(obj => {
-        const card = document.createElement('div');
-        card.className = 'object-card';
-        card.innerHTML = `
-            <div class="object-card__header">
-                <div class="object-card__title">${obj.name}</div>
-                <div class="object-card__type ${obj.type}">${getTypeName(obj.type)}</div>
-            </div>
-            <div class="object-card__info">
-                <p><i class="fas fa-map-marker-alt"></i> ${obj.coords[0].toFixed(4)}, ${obj.coords[1].toFixed(4)}</p>
-                ${obj.description ? `<p><i class="fas fa-info-circle"></i> ${obj.description.substring(0, 50)}${obj.description.length > 50 ? '...' : ''}</p>` : ''}
-            </div>
-            <div class="object-card__condition">
-                <i class="fas fa-${getConditionIcon(obj.condition)}" style="color: ${getConditionColor(obj.condition)}"></i>
-                ${getConditionName(obj.condition)}
-            </div>
-        `;
-        
-        card.addEventListener('click', function() {
-            // Центрируем карту на объекте
-            myMap.setCenter(obj.coords, 16);
-            
-            // Открываем балун
-            if (obj.placemark) {
-                obj.placemark.balloon.open();
-            }
-            
-            // Закрываем панель на мобильных
-            if (window.innerWidth < 768) {
-                document.getElementById('objectsPanel').classList.remove('active');
-            }
-        });
-        
-        objectsList.appendChild(card);
-    });
-}
-
-function filterObjects(filterType) {
-    // Скрываем все объекты
-    currentObjects.forEach(obj => {
-        if (obj.placemark) {
-            obj.placemark.options.set('visible', false);
-        }
-    });
-    
-    // Показываем объекты по фильтру
-    currentObjects.forEach(obj => {
-        if (filterType === 'all' || obj.type === filterType) {
-            if (obj.placemark) {
-                obj.placemark.options.set('visible', true);
-            }
-        }
-    });
-    
-    // Подсвечиваем активный элемент в легенде
-    document.querySelectorAll('.legend__item[data-type]').forEach(item => {
-        item.classList.remove('active');
-    });
-    
-    if (filterType !== 'all') {
-        const legendItem = document.querySelector(`.legend__item[data-type="${filterType}"]`);
-        if (legendItem) {
-            legendItem.classList.add('active');
-        }
+    if (reportBtn) {
+        reportBtn.addEventListener('click', () => openProblemModal());
     }
+    
+    if (addProblemBtn) {
+        addProblemBtn.addEventListener('click', () => openProblemModal());
+    }
+    
+    // Закрытие модального окна
+    document.getElementById('cancelProblem')?.addEventListener('click', () => {
+        problemModal.style.display = 'none';
+    });
+    
+    // Выбор местоположения
+    document.getElementById('selectProblemLocation')?.addEventListener('click', () => {
+        selectProblemLocation();
+    });
+    
+    // Отправка проблемы
+    document.getElementById('submitProblem')?.addEventListener('click', () => {
+        submitProblem();
+    });
 }
 
-function filterObjectsBySearch(query) {
-    if (!query.trim()) {
-        // Показываем все
-        currentObjects.forEach(obj => {
-            if (obj.placemark) {
-                obj.placemark.options.set('visible', true);
-            }
-        });
+function openProblemModal() {
+    if (!authSystem.checkPermission('add_problem')) {
+        authSystem.showNotification('Для сообщения о проблеме выберите роль "Народный мониторинг" или выше', 'error');
         return;
     }
     
-    const searchLower = query.toLowerCase();
-    
-    currentObjects.forEach(obj => {
-        const visible = obj.name.toLowerCase().includes(searchLower) || 
-                       (obj.description && obj.description.toLowerCase().includes(searchLower));
-        
-        if (obj.placemark) {
-            obj.placemark.options.set('visible', visible);
-        }
-    });
+    document.getElementById('problemModal').style.display = 'flex';
+    resetProblemForm();
 }
 
-function updateStatistics() {
-    const treeCount = currentObjects.filter(obj => obj.type === 'tree').length;
-    const lawnCount = currentObjects.filter(obj => obj.type === 'lawn').length;
-    const bushCount = currentObjects.filter(obj => obj.type === 'bush').length;
-    const totalCount = currentObjects.length;
-    
-    // Обновляем счетчики в легенде
-    document.getElementById('treeCount').textContent = treeCount;
-    document.getElementById('lawnCount').textContent = lawnCount;
-    document.getElementById('bushCount').textContent = bushCount;
-    
-    // Обновляем счетчики в панели
-    document.getElementById('statsTreeCount').textContent = treeCount;
-    document.getElementById('statsLawnCount').textContent = lawnCount;
-    document.getElementById('statsBushCount').textContent = bushCount;
-    
-    // Обновляем общее количество
-    document.getElementById('totalObjects').textContent = totalCount;
+function resetProblemForm() {
+    document.getElementById('problemTitle').value = '';
+    document.getElementById('problemDescription').value = '';
+    document.getElementById('problemPhoto').value = '';
 }
 
-function updateLastUpdateTime() {
-    const element = document.getElementById('lastUpdate');
-    if (!element) return;
+function selectProblemLocation() {
+    // В реальном приложении здесь будет выбор на карте
+    const lat = (52.5186 + (Math.random() - 0.5) * 0.01).toFixed(6);
+    const lon = (85.2076 + (Math.random() - 0.5) * 0.01).toFixed(6);
     
-    if (lastUpdateTime) {
-        const now = new Date();
-        const diffMinutes = Math.floor((now - lastUpdateTime) / (1000 * 60));
-        
-        if (diffMinutes < 1) {
-            element.textContent = 'Только что';
-        } else if (diffMinutes < 60) {
-            element.textContent = `${diffMinutes} мин. назад`;
-        } else {
-            const diffHours = Math.floor(diffMinutes / 60);
-            element.textContent = `${diffHours} ч. назад`;
-        }
-    } else {
-        element.textContent = 'Неизвестно';
+    document.getElementById('problemLat').textContent = lat;
+    document.getElementById('problemLon').textContent = lon;
+    
+    showNotification('Координаты установлены', 'success');
+}
+
+async function submitProblem() {
+    const title = document.getElementById('problemTitle').value.trim();
+    const type = document.getElementById('problemType').value;
+    const description = document.getElementById('problemDescription').value.trim();
+    const lat = parseFloat(document.getElementById('problemLat').textContent);
+    const lon = parseFloat(document.getElementById('problemLon').textContent);
+    
+    if (!title || !description) {
+        showNotification('Заполните название и описание проблемы', 'error');
+        return;
     }
+    
+    const problem = {
+        id: Date.now(),
+        title: title,
+        type: type,
+        description: description,
+        status: 'new',
+        location: [lat, lon],
+        author: authSystem.getUserInfo().roleName,
+        date: new Date().toISOString().split('T')[0],
+        votes: 0,
+        comments: 0
+    };
+    
+    // В реальном приложении здесь будет отправка на сервер
+    currentProblems.unshift(problem);
+    addProblemToMap(problem);
+    
+    document.getElementById('problemModal').style.display = 'none';
+    showNotification('Проблема успешно отправлена!', 'success');
+    
+    // Сохраняем в localStorage для демо
+    saveProblemsToLocal();
+    updateStatistics();
+}
+
+function saveProblemsToLocal() {
+    localStorage.setItem('eco_problems_data', JSON.stringify(currentProblems));
 }
 
 // ============================================================================
-// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-// ============================================================================
-function locateUser() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                const userLocation = [position.coords.latitude, position.coords.longitude];
-                
-                // Удаляем старый маркер
-                if (userPlacemark) {
-                    myMap.geoObjects.remove(userPlacemark);
-                }
-                
-                // Создаем новый маркер
-                userPlacemark = new ymaps.Placemark(
-                    userLocation,
-                    {
-                        hintContent: 'Вы здесь',
-                        balloonContent: 'Ваше текущее местоположение'
-                    },
-                    {
-                        preset: 'islands#blueCircleDotIcon',
-                        iconColor: '#2196F3'
-                    }
-                );
-                
-                myMap.geoObjects.add(userPlacemark);
-                myMap.setCenter(userLocation, 15);
-                
-                showNotification('Ваше местоположение определено');
-            },
-            function(error) {
-                let message = 'Не удалось определить местоположение';
-                if (error.code === error.PERMISSION_DENIED) {
-                    message = 'Разрешите доступ к геолокации в настройках браузера';
-                }
-                showNotification(message, 'error');
-            }
-        );
-    } else {
-        showNotification('Геолокация не поддерживается', 'error');
-    }
-}
-
-function showNotification(message, type = 'success') {
-    const notification = document.getElementById('notification');
-    if (!notification) return;
-    
-    notification.textContent = message;
-    notification.className = 'notification';
-    
-    // Цвета для разных типов уведомлений
-    switch(type) {
-        case 'success':
-            notification.style.background = '#4CAF50';
-            break;
-        case 'error':
-            notification.style.background = '#F44336';
-            break;
-        case 'warning':
-            notification.style.background = '#FF9800';
-            break;
-        case 'info':
-            notification.style.background = '#2196F3';
-            break;
-    }
-    
-    notification.style.display = 'block';
-    notification.style.animation = 'slideIn 0.3s ease';
-    
-    // Автоматическое скрытие
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => {
-            notification.style.display = 'none';
-        }, 300);
-    }, 3000);
-}
-
-// ============================================================================
-// УТИЛИТЫ ДЛЯ РАБОТЫ С ДАННЫМИ
+// УТИЛИТЫ
 // ============================================================================
 function getDefaultObjects() {
     return [
@@ -516,33 +326,23 @@ function getDefaultObjects() {
             coords: [52.5180, 85.2100],
             description: 'Крупный дуб возрастом около 50 лет',
             date: '2024-03-15'
-        },
+        }
+    ];
+}
+
+function getDefaultProblems() {
+    return [
         {
-            id: 2,
-            name: 'Липовая аллея',
+            id: 1,
+            title: 'Засохло дерево у школы',
             type: 'tree',
-            condition: 'normal',
-            coords: [52.5150, 85.2150],
-            description: 'Аллея из 20 лип вдоль центральной улицы',
-            date: '2024-03-10'
-        },
-        {
-            id: 3,
-            name: 'Центральный газон',
-            type: 'lawn',
-            condition: 'good',
-            coords: [52.5200, 85.2080],
-            description: 'Ухоженный газон у городской администрации',
-            date: '2024-03-12'
-        },
-        {
-            id: 4,
-            name: 'Кусты сирени',
-            type: 'bush',
-            condition: 'normal',
-            coords: [52.5170, 85.2050],
-            description: 'Группа кустов сирени у школы',
-            date: '2024-03-08'
+            description: 'Дерево полностью засохло, требуется спил',
+            status: 'new',
+            location: [52.5170, 85.2090],
+            author: 'Житель',
+            date: '2024-01-15',
+            votes: 5,
+            comments: 2
         }
     ];
 }
@@ -565,51 +365,141 @@ function getIconByType(type) {
     }
 }
 
-function getTypeName(type) {
-    switch(type) {
-        case 'tree': return 'Дерево';
-        case 'lawn': return 'Газон';
-        case 'bush': return 'Кустарник';
-        default: return 'Объект';
-    }
-}
-
-function getConditionName(condition) {
-    switch(condition) {
-        case 'good': return 'Хорошее';
-        case 'normal': return 'Нормальное';
-        case 'bad': return 'Плохое';
-        default: return 'Неизвестно';
-    }
-}
-
-function getConditionIcon(condition) {
-    switch(condition) {
-        case 'good': return 'smile';
-        case 'normal': return 'meh';
-        case 'bad': return 'frown';
-        default: return 'question';
-    }
-}
-
-function getConditionColor(condition) {
-    switch(condition) {
-        case 'good': return '#4CAF50';
-        case 'normal': return '#FF9800';
-        case 'bad': return '#F44336';
+function getProblemColor(status) {
+    switch(status) {
+        case 'new': return '#FF9800';
+        case 'inwork': return '#2196F3';
+        case 'solved': return '#4CAF50';
         default: return '#757575';
     }
 }
 
-// ============================================================================
-// ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ
-// ============================================================================
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Экологическая карта Бийска запущена');
-    console.log('👤 Пользователь GitHub:', CONFIG.GITHUB_USERNAME);
-    console.log('📦 Репозиторий:', CONFIG.REPO_NAME);
-    console.log('📊 URL данных:', DATA_URL);
+function createObjectBalloon(obj) {
+    return `
+        <div class="balloon-content">
+            <div class="balloon-header">
+                <h4>${obj.name}</h4>
+                <span class="object-type">${getTypeName(obj.type)}</span>
+            </div>
+            <div class="balloon-body">
+                ${obj.description ? `<p>${obj.description}</p>` : ''}
+                <p><i class="fas fa-map-marker-alt"></i> ${obj.coords[0].toFixed(6)}, ${obj.coords[1].toFixed(6)}</p>
+            </div>
+        </div>
+    `;
+}
+
+function createProblemBalloon(problem) {
+    return `
+        <div class="balloon-content">
+            <div class="balloon-header">
+                <h4>${problem.title}</h4>
+                <span class="problem-status">${getProblemStatusName(problem.status)}</span>
+            </div>
+            <div class="balloon-body">
+                <p>${problem.description}</p>
+                <p><i class="far fa-user"></i> ${problem.author}</p>
+                <p><i class="far fa-calendar"></i> ${problem.date}</p>
+            </div>
+        </div>
+    `;
+}
+
+function getTypeName(type) {
+    const types = {
+        tree: 'Дерево',
+        lawn: 'Газон',
+        bush: 'Кустарник'
+    };
+    return types[type] || 'Объект';
+}
+
+function getProblemStatusName(status) {
+    const statuses = {
+        new: 'Новая',
+        inwork: 'В работе',
+        solved: 'Решено'
+    };
+    return statuses[status] || status;
+}
+
+function updateStatistics() {
+    // Статистика объектов
+    const treeCount = currentObjects.filter(o => o.type === 'tree').length;
+    const lawnCount = currentObjects.filter(o => o.type === 'lawn').length;
+    const bushCount = currentObjects.filter(o => o.type === 'bush').length;
     
-    // Периодическое обновление времени
-    setInterval(updateLastUpdateTime, 60000);
-});
+    document.getElementById('treeCount')?.textContent = treeCount;
+    document.getElementById('lawnCount')?.textContent = lawnCount;
+    document.getElementById('bushCount')?.textContent = bushCount;
+    
+    // Статистика проблем
+    const problemNew = currentProblems.filter(p => p.status === 'new').length;
+    const problemWork = currentProblems.filter(p => p.status === 'inwork').length;
+    const problemSolved = currentProblems.filter(p => p.status === 'solved').length;
+    
+    document.getElementById('problemNewCount')?.textContent = problemNew;
+    document.getElementById('problemWorkCount')?.textContent = problemWork;
+    document.getElementById('problemSolvedCount')?.textContent = problemSolved;
+}
+
+// ============================================================================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ============================================================================
+function locateUser() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                const location = [position.coords.latitude, position.coords.longitude];
+                myMap.setCenter(location, 15);
+                showNotification('Ваше местоположение определено');
+            },
+            error => {
+                showNotification('Не удалось определить местоположение', 'error');
+            }
+        );
+    } else {
+        showNotification('Геолокация не поддерживается', 'error');
+    }
+}
+
+function showNotification(message, type = 'success') {
+    const notification = document.getElementById('notification');
+    if (!notification) return;
+    
+    notification.textContent = message;
+    notification.className = 'notification';
+    
+    const colors = {
+        success: '#4CAF50',
+        error: '#F44336',
+        warning: '#FF9800',
+        info: '#2196F3'
+    };
+    
+    notification.style.background = colors[type] || colors.success;
+    notification.style.display = 'block';
+    
+    setTimeout(() => {
+        notification.style.display = 'none';
+    }, 3000);
+}
+
+function setupLegend() {
+    const toggle = document.getElementById('legendToggle');
+    const body = document.getElementById('legendBody');
+    
+    if (toggle && body) {
+        toggle.addEventListener('click', () => {
+            const isVisible = body.style.display !== 'none';
+            body.style.display = isVisible ? 'none' : 'block';
+            const icon = toggle.querySelector('i');
+            icon.className = isVisible ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+        });
+    }
+}
+
+// ============================================================================
+// ГЛОБАЛЬНЫЕ ЭКСПОРТЫ
+// ============================================================================
+window.showNotification = showNotification;
