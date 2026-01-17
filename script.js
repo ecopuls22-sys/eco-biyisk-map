@@ -409,6 +409,34 @@ function initializeUI() {
     setupVotingCreationSystem();
     
     console.log('✅ Интерфейс инициализирован');
+    // Кнопка добавления идеи
+const addIdeaBtn = document.getElementById('addIdeaBtn');
+if (addIdeaBtn) {
+  addIdeaBtn.addEventListener('click', () => openSidebar('idea'));
+}
+
+// Кнопка добавления предложения
+const addSuggestionBtn = document.getElementById('addSuggestionBtn');
+if (addSuggestionBtn) {
+  addSuggestionBtn.addEventListener('click', () => openSidebar('suggestion'));
+}
+
+// Кнопка создания голосования (в шапке)
+const createVotingBtn = document.getElementById('createVotingBtn');
+if (createVotingBtn) {
+  createVotingBtn.addEventListener('click', () => openSidebar('voting'));
+}
+
+// Закрытие сайдбара при клике вне его
+document.addEventListener('click', (e) => {
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar && !sidebar.contains(e.target) && 
+      !e.target.closest('.add-idea-btn') && 
+      !e.target.closest('.add-suggestion-btn') && 
+      !e.target.closest('.create-voting-btn')) {
+    closeSidebar();
+  }
+});
 }
 
 function setupNavigation() {
@@ -901,7 +929,206 @@ function updateStatistics() {
     if (problemWorkCount) problemWorkCount.textContent = problemWork;
     if (problemSolvedCount) problemSolvedCount.textContent = problemSolved;
 }
+// Добавим в конец script.js перед глобальными экспортами:
 
+function openSidebar(type) {
+  const sidebar = document.getElementById('sidebar');
+  const sidebarTitle = document.getElementById('sidebarTitle');
+  const sidebarContent = document.getElementById('sidebarContent');
+  
+  if (!sidebar || !sidebarTitle || !sidebarContent) return;
+  
+  let title = '';
+  let content = '';
+  
+  switch(type) {
+    case 'idea':
+      title = '<i class="fas fa-lightbulb"></i> Предложить идею';
+      content = getIdeaFormContent();
+      break;
+    case 'suggestion':
+      title = '<i class="fas fa-map-marker-alt"></i> Добавить предложение';
+      content = getSuggestionFormContent();
+      break;
+    case 'voting':
+      if (!authSystem.checkPermission('create_voting')) {
+        showNotification('Только администраторы могут создавать голосования', 'error');
+        return;
+      }
+      title = '<i class="fas fa-vote-yea"></i> Создать голосование';
+      content = getVotingFormContent();
+      break;
+    default:
+      return;
+  }
+  
+  sidebarTitle.innerHTML = title;
+  sidebarContent.innerHTML = content;
+  sidebar.classList.add('open');
+  
+  // Инициализируем обработчики для формы
+  initSidebarForm(type);
+}
+
+function closeSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) {
+    sidebar.classList.remove('open');
+  }
+}
+
+function getIdeaFormContent() {
+  return `
+    <div class="form-group">
+      <label for="ideaTitle">Название идеи:</label>
+      <input type="text" id="ideaTitle" placeholder="Например: Посадить новые деревья в парке">
+    </div>
+    <div class="form-group">
+      <label for="ideaCategory">Категория:</label>
+      <select id="ideaCategory">
+        <option value="greening">Озеленение</option>
+        <option value="improvement">Благоустройство</option>
+        <option value="ecology">Экология</option>
+        <option value="infrastructure">Инфраструктура</option>
+        <option value="events">Мероприятия</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="ideaDescription">Подробное описание:</label>
+      <textarea id="ideaDescription" rows="4" placeholder="Опишите вашу идею..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Предполагаемое местоположение:</label>
+      <div class="coordinates-display">
+        <div class="coord">
+          <span>Широта:</span>
+          <span id="ideaLat">52.518600</span>
+        </div>
+        <div class="coord">
+          <span>Долгота:</span>
+          <span id="ideaLon">85.207600</span>
+        </div>
+      </div>
+      <button class="btn btn--small" id="selectIdeaLocation">
+        <i class="fas fa-map-marker-alt"></i> Указать на карте
+      </button>
+    </div>
+    <div class="form-group">
+      <label for="ideaBudget">Примерный бюджет (руб.):</label>
+      <input type="number" id="ideaBudget" placeholder="100000" min="0">
+    </div>
+    <div class="idea-limits" id="ideaLimits">
+      <p><i class="fas fa-info-circle"></i> У вас осталось <span id="ideasLeft">3</span> идей в этом месяце</p>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn--secondary" id="cancelIdea">Отмена</button>
+      <button class="btn btn--primary" id="submitIdea">Предложить идею</button>
+    </div>
+  `;
+}
+
+function getSuggestionFormContent() {
+  return `
+    <div class="form-group">
+      <label for="suggestionTitle">Название предложения:</label>
+      <input type="text" id="suggestionTitle" placeholder="Например: Место для нового фонтана">
+    </div>
+    <div class="form-group">
+      <label for="suggestionCategory">Категория:</label>
+      <select id="suggestionCategory">
+        <option value="greening">Озеленение</option>
+        <option value="improvement">Благоустройство</option>
+        <option value="bench">Скамейка</option>
+        <option value="playground">Детская площадка</option>
+        <option value="lighting">Освещение</option>
+        <option value="other">Другое</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="suggestionDescription">Описание:</label>
+      <textarea id="suggestionDescription" rows="3" placeholder="Опишите ваше предложение..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Местоположение:</label>
+      <div class="coordinates-display">
+        <div class="coord">
+          <span>Широта:</span>
+          <span id="suggestionLat">52.518600</span>
+        </div>
+        <div class="coord">
+          <span>Долгота:</span>
+          <span id="suggestionLon">85.207600</span>
+        </div>
+      </div>
+      <button class="btn btn--small" id="selectSuggestionLocation">
+        <i class="fas fa-map-marker-alt"></i> Выбрать на карте
+      </button>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn--secondary" id="cancelSuggestion">Отмена</button>
+      <button class="btn btn--primary" id="submitSuggestion">Добавить предложение</button>
+    </div>
+  `;
+}
+
+function getVotingFormContent() {
+  return `
+    <div class="form-group">
+      <label for="votingTitle">Название голосования:</label>
+      <input type="text" id="votingTitle" placeholder="Например: Выбор места для нового сквера">
+    </div>
+    <div class="form-group">
+      <label for="votingDescription">Описание:</label>
+      <textarea id="votingDescription" rows="3" placeholder="Опишите, о чём это голосование..."></textarea>
+    </div>
+    <div class="form-group">
+      <label for="votingType">Тип голосования:</label>
+      <select id="votingType">
+        <option value="idea">По выбору идеи</option>
+        <option value="location">По выбору местоположения</option>
+        <option value="priority">По приоритету проекта</option>
+        <option value="other">Другое</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="votingStartDate">Дата начала:</label>
+      <input type="date" id="votingStartDate">
+    </div>
+    <div class="form-group">
+      <label for="votingEndDate">Дата окончания:</label>
+      <input type="date" id="votingEndDate">
+    </div>
+    <div class="form-group">
+      <label for="votingMinVotes">Минимальное количество голосов:</label>
+      <input type="number" id="votingMinVotes" placeholder="100" min="1" value="100">
+    </div>
+    <div class="form-actions">
+      <button class="btn btn--secondary" id="cancelVoting">Отмена</button>
+      <button class="btn btn--primary" id="submitVoting">Создать голосование</button>
+    </div>
+  `;
+}
+
+function initSidebarForm(type) {
+  // Закрытие сайдбара
+  document.getElementById('closeSidebar').addEventListener('click', closeSidebar);
+  
+  // Общие кнопки отмены
+  document.getElementById('cancelIdea')?.addEventListener('click', closeSidebar);
+  document.getElementById('cancelSuggestion')?.addEventListener('click', closeSidebar);
+  document.getElementById('cancelVoting')?.addEventListener('click', closeSidebar);
+  
+  // Отправка форм (упрощённо)
+  if (type === 'idea') {
+    document.getElementById('submitIdea').addEventListener('click', submitIdeaFromSidebar);
+    document.getElementById('selectIdeaLocation').addEventListener('click', selectIdeaLocation);
+  } else if (type === 'suggestion') {
+    document.getElementById('submitSuggestion').addEventListener('click', submitSuggestionFromSidebar);
+    document.getElementById('selectSuggestionLocation').addEventListener('click', selectSuggestionLocation);
+  } else if (type === 'voting') {
+    document.getElementById('submitVoting').addEventListener('click', submitVotingFromSidebar);
+  }
+}
 // ============================================================================
 // ГЛОБАЛЬНЫЕ ЭКСПОРТЫ
 // ============================================================================
@@ -910,3 +1137,4 @@ window.openProblemModalForObject = function(object) {
     openProblemModal();
     // Можно добавить логику для предзаполнения формы
 };
+
