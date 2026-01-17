@@ -1,0 +1,25 @@
+{
+  "objectTypes": [
+    { "id": "tree", "name": "Дерево", "icon": "fa-tree" },
+    { "id": "lawn", "name": "Газон", "icon": "fa-seedling" },
+    { "id": "bush", "name": "Кустарник", "icon": "fa-leaf" },
+    { "id": "flowerbed", "name": "Клумба", "icon": "fa-spa" },
+    { "id": "bench", "name": "Скамейка", "icon": "fa-chair" },
+    { "id": "fountain", "name": "Фонтан", "icon": "fa-water" }
+  ],
+  
+  "problemTypes": [
+    { "id": "tree_problem", "name": "Проблема с деревом", "objectType": "tree" },
+    { "id": "lawn_problem", "name": "Проблема с газоном", "objectType": "lawn" },
+    { "id": "trash", "name": "Мусор", "objectType": null },
+    { "id": "damage", "name": "Повреждение", "objectType": null },
+    { "id": "other", "name": "Другое", "objectType": null }
+  ],
+  
+  "ideaCategories": [
+    { "id": "greening", "name": "Озеленение" },
+    { "id": "improvement", "name": "Благоустройство" },
+    { "id": "ecology", "name": "Экология" },
+    { "id": "infrastructure", "name": "Инфраструктура" }
+  ]
+}
