@@ -1,0 +1,19 @@
+[
+  {
+    "id": 1,
+    "title": "Выбор деревьев для посадки в Центральном парке",
+    "description": "Выберите, какие деревья посадить в рамках весенней программы озеленения",
+    "status": "active",
+    "startDate": "2024-02-01",
+    "endDate": "2024-02-15",
+    "options": [
+      { "id": 1, "text": "Березы", "votes": 120 },
+      { "id": 2, "text": "Клены", "votes": 85 },
+      { "id": 3, "text": "Липы", "votes": 67 }
+    ],
+    "totalVotes": 272,
+    "minVotes": 100,
+    "createdBy": "admin",
+    "ideaId": null
+  }
+]
