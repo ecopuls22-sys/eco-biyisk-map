@@ -141,7 +141,7 @@ class IdeasSystem {
             return;
         }
         
-        document.getElementById('ideaModal').style.display = 'flex';
+          openSidebar('idea');
         this.resetIdeaForm();
     }
     
