@@ -1657,3 +1657,84 @@ body {
   padding: 20px;
   overflow-y: auto;
 }
+/* Боковая панель */
+.sidebar {
+    position: fixed;
+    top: 70px; /* Учитывая высоту header */
+    right: -50%; /* Скрыт по умолчанию */
+    width: 50%;
+    height: calc(100vh - 70px);
+    background: white;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+    z-index: 998; /* Ниже header, выше карты */
+    transition: right 0.3s ease;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar.active {
+    right: 0; /* Выезжает */
+}
+
+.sidebar__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #eee;
+    background: #f9f9f9;
+}
+
+.sidebar__header h2 {
+    margin: 0;
+    color: #2E7D32;
+}
+
+.sidebar__close {
+    background: none;
+    border: none;
+    color: #777;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.sidebar__close:hover {
+    color: #333;
+}
+
+.sidebar__content {
+    padding: 20px;
+    flex: 1;
+}
+
+.sidebar-panel {
+    display: none; /* Скрыты по умолчанию */
+}
+
+.sidebar-panel.active {
+    display: block;
+}
+
+/* Адаптив: На мобильных — полноэкранный sidebar */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        right: -100%;
+    }
+    
+    .sidebar.active {
+        right: 0;
+    }
+}
+
+/* Карта: Когда sidebar открыт, карта сжимается */
+.screen--map {
+    width: 100%; /* Всегда полная ширина, но с overlay если нужно */
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+    transition: width 0.3s ease; /* Если хотите анимировать сжатие карты, но не обязательно */
+}
