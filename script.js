@@ -2,7 +2,7 @@
 // КОНФИГУРАЦИЯ ПРОЕКТА
 // ============================================================================
 const CONFIG = {
-    GITHUB_USERNAME: 'YOUR_GITHUB_USERNAME', // ⬅️ ЗАМЕНИТЕ НА ВАШ ЛОГИН!
+    GITHUB_USERNAME: 'ecopuls22-sys', // ⬅️ ЗАМЕНИТЕ НА ВАШ ЛОГИН!
     REPO_NAME: 'eco-biyisk-map',
     DATA_FILE: 'data/objects.json',
     ISSUES_URL: 'https://github.com/YOUR_USERNAME/eco-biyisk-map/issues/new?template=new-object.md'
@@ -613,3 +613,4 @@ document.addEventListener('DOMContentLoaded', function() {
     // Периодическое обновление времени
     setInterval(updateLastUpdateTime, 60000);
 });
+
