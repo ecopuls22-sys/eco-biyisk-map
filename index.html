@@ -191,6 +191,45 @@
     </div>
 
     <script src="script.js"></script>
+    <!-- ДОБАВИТЬ ПЕРЕД ЗАКРЫВАЮЩИМ ТЕГОМ BODY -->
+<!-- Панель управления (справа) -->
+<div class="control-panel" id="controlPanel">
+    <div class="control-panel__header">
+        <h3 id="panelTitle">
+            <i class="fas fa-cog"></i> Панель управления
+        </h3>
+        <button class="close-btn" id="closeControlPanel">&times;</button>
+    </div>
+    
+    <div class="control-panel__body">
+        <!-- Контент будет динамически меняться -->
+        <div class="panel-content" id="panelContent">
+            <div class="panel-default" id="defaultPanel">
+                <div class="user-info">
+                    <div class="user-role-badge" id="userRoleBadge">
+                        <i class="fas fa-user"></i> Гость
+                    </div>
+                    <p id="userWelcome">Войдите в систему для доступа к функциям</p>
+                </div>
+                
+                <div class="panel-actions">
+                    <button class="panel-action-btn" id="loginBtn">
+                        <i class="fas fa-sign-in-alt"></i> Войти
+                    </button>
+                    <button class="panel-action-btn" id="registerBtn">
+                        <i class="fas fa-user-plus"></i> Регистрация
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Кнопка открытия панели управления -->
+<button class="control-panel-btn" id="openControlPanel" title="Панель управления">
+    <i class="fas fa-bars"></i>
+</button>
 </body>
 </html>
+
 
