@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Экологическая карта Бийска - Умный город</title>
-    <script src="https://api-maps.yandex.ru/2.1/?apikey=3dcd9dd7-c0b7-4ca6-b3d7-93a7141fc60a&lang=ru_RU&load=package.full" type="text/javascript"></script>    <link rel="stylesheet" href="style.css">
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=3dcd9dd7-c0b7-4ca6-b3d7-93a7141fc60a&lang=ru_RU&load=package.full" type="text/javascript"></script>
+    <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+
 <!-- Фиксированное верхнее меню -->
 <header class="header">
     <div class="header__container">
@@ -66,7 +68,7 @@
 
 <!-- Основной контент -->
 <main class="main">
-    <!-- Карта (главный экран) -->
+    <!-- Карта (всегда видимая основа) -->
     <div class="screen screen--map active" id="screenMap">
         <div id="map"></div>
         
@@ -140,207 +142,233 @@
             </div>
         </div>
         
-        <!-- Кнопка добавления объекта (только специалист и админ) -->
+        <!-- Кнопки на карте -->
         <button class="add-object-btn" id="addObjectBtn" title="Добавить объект">
             <i class="fas fa-plus-circle"></i>
             <span>Объект</span>
         </button>
         
-        <!-- Кнопка добавления проблемы -->
         <button class="add-problem-btn" id="addProblemBtn" title="Сообщить о проблеме">
             <i class="fas fa-exclamation-circle"></i>
             <span>Проблема</span>
         </button>
         
-        <!-- Кнопка добавления предложения -->
         <button class="add-suggestion-btn" id="addSuggestionBtn" title="Добавить предложение">
             <i class="fas fa-map-marker-alt"></i>
             <span>Предложение</span>
         </button>
         
-        <!-- Кнопка добавления идеи -->
         <button class="add-idea-btn" id="addIdeaBtn" title="Предложить идею">
             <i class="fas fa-lightbulb"></i>
             <span>Идея</span>
         </button>
         
-        <!-- Кнопка "Найти меня" -->
         <button class="locate-btn" id="locateBtn" title="Определить мое местоположение">
             <i class="fas fa-location-arrow"></i>
         </button>
     </div>
-    
-    <!-- Экран объектов -->
-    <div class="screen screen--objects" id="screenObjects">
-        <div class="screen__header">
-            <h2><i class="fas fa-list"></i> Объекты на карте</h2>
-            <div class="screen__actions">
-                <button class="btn btn--primary" id="addObjectFromListBtn">
-                    <i class="fas fa-plus"></i> Добавить объект
-                </button>
-            </div>
+
+    <!-- Боковая панель (sidebar) справа -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar__header">
+            <h2 id="sidebarTitle">Раздел</h2>
+            <button class="sidebar__close" id="sidebarClose">
+                <i class="fas fa-times"></i> Закрыть
+            </button>
         </div>
-        <div class="screen__content">
-            <div class="objects-stats">
-                <div class="stat-item">
-                    <i class="fas fa-tree"></i>
-                    <span>Деревья: <strong id="statsTreeCount">0</strong></span>
+        
+        <div class="sidebar__content">
+            <!-- Панель Объекты -->
+            <div class="sidebar-panel panel--objects" id="panelObjects">
+                <h2>Объекты на карте</h2>
+                <div class="objects-stats">
+                    <div class="stat-item">
+                        <i class="fas fa-tree"></i>
+                        <div>
+                            <h3 id="statsTreeCount">0</h3>
+                            <p>Деревьев</p>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-seedling"></i>
+                        <div>
+                            <h3 id="statsLawnCount">0</h3>
+                            <p>Газонов</p>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-leaf"></i>
+                        <div>
+                            <h3 id="statsBushCount">0</h3>
+                            <p>Кустарников</p>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-layer-group"></i>
+                        <div>
+                            <h3 id="statsTotalObjects">0</h3>
+                            <p>Всего объектов</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="stat-item">
-                    <i class="fas fa-seedling"></i>
-                    <span>Газоны: <strong id="statsLawnCount">0</strong></span>
-                </div>
-                <div class="stat-item">
-                    <i class="fas fa-leaf"></i>
-                    <span>Кустарники: <strong id="statsBushCount">0</strong></span>
-                </div>
-                <div class="stat-item">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>Всего: <strong id="statsTotalObjects">0</strong></span>
-                </div>
+                <!-- Здесь будет список объектов -->
+                <div id="objectsList" class="objects-list"></div>
             </div>
-            <div class="objects-filters">
-                <button class="filter-btn active" data-filter="all">Все</button>
-                <button class="filter-btn" data-filter="tree">Деревья</button>
-                <button class="filter-btn" data-filter="lawn">Газоны</button>
-                <button class="filter-btn" data-filter="bush">Кустарники</button>
-            </div>
-            <div class="objects-list" id="objectsList">
-                <!-- Объекты загружаются через JS -->
-            </div>
-        </div>
-    </div>
-    
-    <!-- Экран проблем -->
-    <div class="screen screen--problems" id="screenProblems">
-        <div class="screen__header">
-            <h2><i class="fas fa-exclamation-triangle"></i> Проблемы города</h2>
-            <div class="screen__actions">
-                <button class="btn btn--primary" id="reportProblemBtn">
-                    <i class="fas fa-plus"></i> Сообщить о проблеме
-                </button>
-            </div>
-        </div>
-        <div class="screen__content">
-            <div class="problems-stats">
-                <div class="stat-card">
-                    <div class="stat-card__value" id="problemsTotal">0</div>
-                    <div class="stat-card__label">Всего проблем</div>
+
+            <!-- Панель Проблемы -->
+            <div class="sidebar-panel panel--problems" id="panelProblems">
+                <h2>Проблемы</h2>
+                <div class="problems-stats">
+                    <div class="stat-card">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <h3 id="statsProblemsTotal">0</h3>
+                            <p>Всего проблем</p>
+                        </div>
+                    </div>
+                    <!-- Другие статистики -->
                 </div>
-                <div class="stat-card">
-                    <div class="stat-card__value" id="problemsNew">0</div>
-                    <div class="stat-card__label">Новые</div>
+                <div class="problems-filters">
+                    <!-- Фильтры проблем -->
                 </div>
-                <div class="stat-card">
-                    <div class="stat-card__value" id="problemsInWork">0</div>
-                    <div class="stat-card__label">В работе</div>
+                <div id="problemsList" class="problems-list"></div>
+            </div>
+
+            <!-- Панель Идеи -->
+            <div class="sidebar-panel panel--ideas" id="panelIdeas">
+                <h2>Идеи жителей</h2>
+                <div class="ideas-stats">
+                    <div class="stat-card">
+                        <i class="fas fa-lightbulb"></i>
+                        <div>
+                            <h3 id="ideasTotal">0</h3>
+                            <p>Всего идей</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-hourglass-half"></i>
+                        <div>
+                            <h3 id="ideasNew">0</h3>
+                            <p>На рассмотрении</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-check-circle"></i>
+                        <div>
+                            <h3 id="ideasApproved">0</h3>
+                            <p>Одобрено</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-card__value" id="problemsSolved">0</div>
-                    <div class="stat-card__label">Решено</div>
+                
+                <div class="ideas-tabs">
+                    <button class="tab-btn active" data-tab="new">Новые</button>
+                    <button class="tab-btn" data-tab="voting">На голосовании</button>
+                    <button class="tab-btn" data-tab="approved">Одобренные</button>
+                    <button class="tab-btn" data-tab="my">Мои</button>
                 </div>
-            </div>
-            
-            <div class="problems-filters">
-                <button class="filter-btn active" data-filter="all">Все</button>
-                <button class="filter-btn" data-filter="new">Новые</button>
-                <button class="filter-btn" data-filter="inwork">В работе</button>
-                <button class="filter-btn" data-filter="solved">Решено</button>
-                <button class="filter-btn" data-filter="my">Мои проблемы</button>
-            </div>
-            <div class="problems-list" id="problemsList">
-                <!-- Проблемы загружаются через JS -->
-            </div>
-        </div>
-    </div>
-    
-    <!-- Экран идей -->
-    <div class="screen screen--ideas" id="screenIdeas">
-        <div class="screen__header">
-            <h2><i class="fas fa-lightbulb"></i> Банк идей</h2>
-            <div class="screen__actions">
+                
+                <div id="ideasList" class="ideas-list"></div>
+                
                 <button class="btn btn--primary" id="suggestIdeaBtn">
                     <i class="fas fa-plus"></i> Предложить идею
                 </button>
             </div>
-        </div>
-        <div class="screen__content">
-            <div class="ideas-stats">
-                <div class="stat-card">
-                    <div class="stat-card__value" id="ideasTotal">0</div>
-                    <div class="stat-card__label">Всего идей</div>
+
+            <!-- Панель Голосования -->
+            <div class="sidebar-panel panel--voting" id="panelVoting">
+                <h2>Голосования</h2>
+                <div class="voting-stats">
+                    <div class="stat-card">
+                        <i class="fas fa-vote-yea"></i>
+                        <div>
+                            <h3 id="votingActive">0</h3>
+                            <p>Активных</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <h3 id="votingComing">0</h3>
+                            <p>Скоро</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-check-circle"></i>
+                        <div>
+                            <h3 id="votingFinished">0</h3>
+                            <p>Завершённых</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-list"></i>
+                        <div>
+                            <h3 id="votingTotal">0</h3>
+                            <p>Всего</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-card__value" id="ideasNew">0</div>
-                    <div class="stat-card__label">На рассмотрении</div>
+                
+                <div class="voting-tabs">
+                    <button class="tab-btn active" data-tab="active">Активные</button>
+                    <button class="tab-btn" data-tab="coming">Скоро</button>
+                    <button class="tab-btn" data-tab="finished">Завершено</button>
+                    <button class="tab-btn" data-tab="results">Результаты</button>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-card__value" id="ideasApproved">0</div>
-                    <div class="stat-card__label">Одобрено</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-card__value" id="ideasRejected">0</div>
-                    <div class="stat-card__label">Отклонено</div>
-                </div>
-            </div>
-            
-            <div class="ideas-tabs">
-                <button class="tab-btn active" data-tab="new">Новые идеи</button>
-                <button class="tab-btn" data-tab="voting">На голосовании</button>
-                <button class="tab-btn" data-tab="approved">Одобренные</button>
-                <button class="tab-btn" data-tab="my">Мои идеи</button>
-            </div>
-            
-            <div class="ideas-list" id="ideasList">
-                <!-- Идеи загружаются через JS -->
-            </div>
-        </div>
-    </div>
-    
-    <!-- Экран голосований -->
-    <div class="screen screen--voting" id="screenVoting">
-        <div class="screen__header">
-            <h2><i class="fas fa-vote-yea"></i> Приоритетные голосования</h2>
-            <div class="screen__actions">
+                
+                <div id="votingList" class="voting-list"></div>
+                
                 <button class="btn btn--primary" id="createVotingBtn">
                     <i class="fas fa-plus"></i> Создать голосование
                 </button>
             </div>
         </div>
-        <div class="screen__content">
-            <div class="voting-stats">
-                <div class="stat-card">
-                    <div class="stat-card__value" id="votingActive">0</div>
-                    <div class="stat-card__label">Активные</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-card__value" id="votingComing">0</div>
-                    <div class="stat-card__label">Будущие</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-card__value" id="votingFinished">0</div>
-                    <div class="stat-card__label">Завершённые</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-card__value" id="votingTotal">0</div>
-                    <div class="stat-card__label">Всего голосований</div>
-                </div>
-            </div>
-            
-            <div class="voting-tabs">
-                <button class="tab-btn active" data-tab="active">Активные голосования</button>
-                <button class="tab-btn" data-tab="coming">Будущие голосования</button>
-                <button class="tab-btn" data-tab="finished">Завершённые</button>
-                <button class="tab-btn" data-tab="results">Результаты</button>
-            </div>
-            
-            <div class="voting-list" id="votingList">
-                <!-- Голосования загружаются через JS -->
-            </div>
-        </div>
     </div>
 </main>
 
+<!-- Модальное окно предложения идеи -->
+<div class="modal" id="ideaModal">
+    <div class="modal__content">
+        <h3><i class="fas fa-lightbulb"></i> Предложить идею</h3>
+        <!-- поля формы идеи -->
+        <div class="form-group">
+            <label for="ideaTitle">Название идеи:</label>
+            <input type="text" id="ideaTitle" placeholder="Краткое и понятное название">
+        </div>
+        <div class="form-group">
+            <label for="ideaCategory">Категория:</label>
+            <select id="ideaCategory">
+                <option value="greening">Озеленение</option>
+                <option value="improvement">Благоустройство</option>
+                <option value="ecology">Экология</option>
+                <option value="infrastructure">Инфраструктура</option>
+                <option value="events">Мероприятия</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="ideaDescription">Подробное описание:</label>
+            <textarea id="ideaDescription" rows="4" placeholder="Опишите вашу идею..."></textarea>
+        </div>
+        <div class="form-group">
+            <label>Предполагаемое местоположение:</label>
+            <div class="coordinates-display">
+                <span>Широта: <span id="ideaLat">52.518600</span></span>
+                <span>Долгота: <span id="ideaLon">85.207600</span></span>
+            </div>
+            <button class="btn btn--small" id="selectIdeaLocation">Указать на карте</button>
+        </div>
+        <div class="form-group">
+            <label for="ideaBudget">Примерный бюджет (руб.):</label>
+            <input type="number" id="ideaBudget" placeholder="100000" min="0">
+        </div>
+        <div class="form-actions">
+            <button class="btn btn--secondary" id="cancelIdea">Отмена</button>
+            <button class="btn btn--primary" id="submitIdea">Предложить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Здесь должны быть остальные модалки: suggestionModal, problemModal, createVotingModal и т.д. -->
 <!-- Модальные окна -->
 <div class="modal" id="roleModal">
     <div class="modal__content modal--role">
@@ -546,7 +574,7 @@
 </div>
 
 <!-- Модальное окно идеи -->
-<!-- <div class="modal" id="ideaModal">
+<div class="modal" id="ideaModal">
     <div class="modal__content">
         <h3><i class="fas fa-lightbulb"></i> Предложить идею</h3>
         
@@ -602,10 +630,10 @@
             <button class="btn btn--primary" id="submitIdea">Предложить идею</button>
         </div>
     </div>
-</div> -->
+</div>
 
 <!-- Модальное окно предложения (точки на карте) -->
-<!-- <div class="modal" id="suggestionModal">
+<div class="modal" id="suggestionModal">
     <div class="modal__content">
         <h3><i class="fas fa-map-marker-alt"></i> Добавить предложение на карту</h3>
         
@@ -653,10 +681,10 @@
             <button class="btn btn--primary" id="submitSuggestion">Добавить предложение</button>
         </div>
     </div>
-</div> -->
+</div>
 
-<!-- <!-- Модальное окно создания голосования (только для админа) -->
-<!-- <div class="modal" id="createVotingModal">
+<!-- Модальное окно создания голосования (только для админа) -->
+<div class="modal" id="createVotingModal">
     <div class="modal__content">
         <h3><i class="fas fa-vote-yea"></i> Создать новое голосование</h3>
         
@@ -717,7 +745,7 @@
             <select id="votingIdeaId">
                 <option value="">Не привязывать</option>
                 <!-- Список идей будет заполняться через JS -->
-            <!-- </select>
+            </select>
         </div>
         
         <div class="form-actions">
@@ -725,61 +753,24 @@
             <button class="btn btn--primary" id="submitCreateVoting">Создать голосование</button>
         </div>
     </div>
-</div> --> 
+</div>
 
-<!-- Уведомления -->
 <div class="notification" id="notification"></div>
 
-<!-- Подключаем скрипты -->
 <script src="auth.js"></script>
 <script src="voting.js"></script>
 <script src="ideas.js"></script>
 <script src="script.js"></script>
+
 <script>
-    // Проверяем загрузку Яндекс.Карт
     function checkYmapsLoaded() {
         if (typeof ymaps !== 'undefined') {
-            console.log('✅ Яндекс.Карты загружены');
             window.dispatchEvent(new Event('yandex-maps-loaded'));
         } else {
-            console.warn('⚠ Яндекс.Карты еще не загружены');
             setTimeout(checkYmapsLoaded, 500);
         }
     }
-    
-    // Запускаем проверку
     setTimeout(checkYmapsLoaded, 1000);
-    window.addEventListener('yandex-maps-loaded', () => {
-    initMap();
-});
-
-function initMap() {
-    const map = new ymaps.Map('map', {
-        center: [52.518600, 85.207600], // Бийск
-        zoom: 13,
-        controls: ['zoomControl', 'geolocationControl']
-    });
-
-    window.ecoMap = map; // чтобы использовать в других файлах
-    console.log('🗺️ Карта инициализирована');
-}
-
 </script>
-    <div class="sidebar" id="sidebar">
-  <div class="sidebar__header">
-    <h3 id="sidebarTitle"></h3>
-    <button class="sidebar__close" id="closeSidebar">
-      <i class="fas fa-times"></i>
-    </button>
-  </div>
-  <div class="sidebar__content" id="sidebarContent">
-    <!-- Контент будет подгружаться динамически -->
-  </div>
-</div>
 </body>
 </html>
-
-
-
-
-
