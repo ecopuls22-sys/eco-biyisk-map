@@ -7,19 +7,27 @@
     { "id": "bench", "name": "Скамейка", "icon": "fa-chair" },
     { "id": "fountain", "name": "Фонтан", "icon": "fa-water" }
   ],
-  
   "problemTypes": [
     { "id": "tree_problem", "name": "Проблема с деревом", "objectType": "tree" },
     { "id": "lawn_problem", "name": "Проблема с газоном", "objectType": "lawn" },
+    { "id": "bush_problem", "name": "Проблема с кустарником", "objectType": "bush" },
     { "id": "trash", "name": "Мусор", "objectType": null },
     { "id": "damage", "name": "Повреждение", "objectType": null },
     { "id": "other", "name": "Другое", "objectType": null }
   ],
-  
   "ideaCategories": [
     { "id": "greening", "name": "Озеленение" },
     { "id": "improvement", "name": "Благоустройство" },
     { "id": "ecology", "name": "Экология" },
-    { "id": "infrastructure", "name": "Инфраструктура" }
+    { "id": "infrastructure", "name": "Инфраструктура" },
+    { "id": "events", "name": "Мероприятия" }
+  ],
+  "suggestionCategories": [
+    { "id": "greening", "name": "Озеленение" },
+    { "id": "improvement", "name": "Благоустройство" },
+    { "id": "bench", "name": "Скамейка" },
+    { "id": "playground", "name": "Детская площадка" },
+    { "id": "lighting", "name": "Освещение" },
+    { "id": "other", "name": "Другое" }
   ]
 }
