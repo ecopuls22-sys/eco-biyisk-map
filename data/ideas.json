@@ -1,16 +1,20 @@
 [
   {
     "id": 1,
-    "title": "Посадить новые деревья в парке",
-    "description": "Предлагаю посадить 10 кленов вдоль центральной аллеи парка",
+    "title": "Создание нового сквера на ул. Ленина",
     "category": "greening",
-    "budget": 50000,
-    "coords": [52.5200, 85.2100],
-    "author": "resident_67890",
+    "description": "Предлагаю создать новый сквер на пустыре по ул. Ленина, 45. Там достаточно места для посадки деревьев и установки скамеек.",
+    "author": "Иван Петров",
     "authorRole": "resident",
+    "authorId": "user_12345",
     "status": "new",
-    "date": "2024-01-15",
     "votes": { "up": 45, "down": 12 },
-    "comments": 8
+    "comments": 8,
+    "budget": 500000,
+    "location": [52.5190, 85.2080],
+    "date": "2024-01-15",
+    "expertReview": null,
+    "votingId": null,
+    "photos": []
   }
 ]
