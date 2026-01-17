@@ -1129,6 +1129,40 @@ function initSidebarForm(type) {
     document.getElementById('submitVoting').addEventListener('click', submitVotingFromSidebar);
   }
 }
+function submitIdeaFromSidebar() {
+  console.log('Идея отправлена из сайдбара');
+  // Здесь будет логика отправки идеи
+  closeSidebar();
+  showNotification('Идея успешно отправлена!', 'success');
+}
+
+function submitSuggestionFromSidebar() {
+  console.log('Предложение отправлено из сайдбара');
+  closeSidebar();
+  showNotification('Предложение добавлено!', 'success');
+}
+
+function submitVotingFromSidebar() {
+  console.log('Голосование создано из сайдбара');
+  closeSidebar();
+  showNotification('Голосование создано!', 'success');
+}
+
+function selectIdeaLocation() {
+  const lat = (52.5186 + (Math.random() - 0.5) * 0.01).toFixed(6);
+  const lon = (85.2076 + (Math.random() - 0.5) * 0.01).toFixed(6);
+  document.getElementById('ideaLat').textContent = lat;
+  document.getElementById('ideaLon').textContent = lon;
+  showNotification('Координаты установлены', 'success');
+}
+
+function selectSuggestionLocation() {
+  const lat = (52.5186 + (Math.random() - 0.5) * 0.01).toFixed(6);
+  const lon = (85.2076 + (Math.random() - 0.5) * 0.01).toFixed(6);
+  document.getElementById('suggestionLat').textContent = lat;
+  document.getElementById('suggestionLon').textContent = lon;
+  showNotification('Координаты установлены', 'success');
+}
 // ============================================================================
 // ГЛОБАЛЬНЫЕ ЭКСПОРТЫ
 // ============================================================================
@@ -1137,4 +1171,5 @@ window.openProblemModalForObject = function(object) {
     openProblemModal();
     // Можно добавить логику для предзаполнения формы
 };
+
 
