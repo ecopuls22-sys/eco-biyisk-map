@@ -749,8 +749,24 @@
     
     // Запускаем проверку
     setTimeout(checkYmapsLoaded, 1000);
+    window.addEventListener('yandex-maps-loaded', () => {
+    initMap();
+});
+
+function initMap() {
+    const map = new ymaps.Map('map', {
+        center: [52.518600, 85.207600], // Бийск
+        zoom: 13,
+        controls: ['zoomControl', 'geolocationControl']
+    });
+
+    window.ecoMap = map; // чтобы использовать в других файлах
+    console.log('🗺️ Карта инициализирована');
+}
+
 </script>
 </body>
 </html>
+
 
 
