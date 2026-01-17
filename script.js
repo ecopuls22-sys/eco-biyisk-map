@@ -1080,4 +1080,446 @@ function addVotingOption() {
     const optionCount = optionsContainer.children.length + 1;
     
     const optionDiv = document.createElement('div');
-    optionDiv.className = 'voting-option-input
+    optionDiv.className = 'voting-option-input';
+    optionDiv.innerHTML = `
+        <input type="text" placeholder="Вариант ${optionCount}" class="voting-option-text">
+        <button type="button" class="btn-remove-option"><i class="fas fa-times"></i></button>
+    `;
+    
+    optionsContainer.appendChild(optionDiv);
+    
+    // Добавляем обработчик для новой кнопки удаления
+    const removeBtn = optionDiv.querySelector('.btn-remove-option');
+    removeBtn.addEventListener('click', function() {
+        if (optionsContainer.children.length > 2) {
+            optionDiv.remove();
+        } else {
+            showNotification('Должно быть хотя бы 2 варианта', 'error');
+        }
+    });
+}
+
+function addVotingOptionEventListeners() {
+    document.querySelectorAll('.btn-remove-option').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const optionsContainer = document.getElementById('votingOptions');
+            if (optionsContainer.children.length > 2) {
+                this.parentElement.remove();
+            } else {
+                showNotification('Должно быть хотя бы 2 варианта', 'error');
+            }
+        });
+    });
+}
+
+async function submitCreateVoting() {
+    const title = document.getElementById('votingTitle').value.trim();
+    const description = document.getElementById('votingDescription').value.trim();
+    const type = document.getElementById('votingType').value;
+    const startDate = document.getElementById('votingStartDate').value;
+    const endDate = document.getElementById('votingEndDate').value;
+    const minVotes = parseInt(document.getElementById('votingMinVotes').value) || 100;
+    const ideaId = document.getElementById('votingIdeaId').value;
+    
+    if (!title || !description) {
+        showNotification('Заполните название и описание голосования', 'error');
+        return;
+    }
+    
+    if (!startDate || !endDate) {
+        showNotification('Заполните даты начала и окончания', 'error');
+        return;
+    }
+    
+    if (new Date(endDate) <= new Date(startDate)) {
+        showNotification('Дата окончания должна быть позже даты начала', 'error');
+        return;
+    }
+    
+    // Собираем варианты ответов
+    const options = [];
+    const optionInputs = document.querySelectorAll('.voting-option-text');
+    
+    optionInputs.forEach((input, index) => {
+        const text = input.value.trim();
+        if (text) {
+            options.push({
+                id: index + 1,
+                text: text,
+                votes: 0
+            });
+        }
+    });
+    
+    if (options.length < 2) {
+        showNotification('Добавьте хотя бы 2 варианта ответа', 'error');
+        return;
+    }
+    
+    const userInfo = authSystem.getUserInfo();
+    
+    const voting = {
+        id: Date.now(),
+        title: title,
+        description: description,
+        type: type,
+        status: new Date(startDate) > new Date() ? 'coming' : 'active',
+        startDate: startDate,
+        endDate: endDate,
+        options: options,
+        totalVotes: 0,
+        minVotes: minVotes,
+        createdBy: userInfo.roleName,
+        createdById: userInfo.id,
+        ideaId: ideaId || null,
+        createdAt: new Date().toISOString().split('T')[0]
+    };
+    
+    // В реальном приложении здесь будет отправка на GitHub
+    // Для демо просто показываем уведомление
+    document.getElementById('createVotingModal').style.display = 'none';
+    showNotification('Голосование успешно создано!', 'success');
+    
+    // Здесь должен быть код сохранения в votingSystem
+    if (window.votingSystem) {
+        // Добавляем голосование в систему
+        window.votingSystem.votings.push(voting);
+        window.votingSystem.updateStats();
+        window.votingSystem.renderVotings();
+        window.votingSystem.saveToLocalStorage();
+    }
+}
+
+// ============================================================================
+// УТИЛИТЫ
+// ============================================================================
+function getDefaultObjects() {
+    return [
+        {
+            id: 1,
+            type: 'tree',
+            name: 'Старый дуб',
+            species: 'Дуб обыкновенный',
+            age: '50 лет',
+            condition: 'good',
+            coords: [52.5180, 85.2100],
+            description: 'Крупный дуб возрастом около 50 лет',
+            createdBy: 'monitor',
+            createdByName: 'Специалист',
+            createdDate: '2024-03-15',
+            status: 'active',
+            problems: []
+        }
+    ];
+}
+
+function getDefaultProblems() {
+    return [
+        {
+            id: 1,
+            title: 'Засохло дерево у школы',
+            type: 'tree_problem',
+            description: 'Дерево полностью засохло, требуется спил',
+            severity: 'high',
+            status: 'new',
+            location: [52.5170, 85.2090],
+            objectId: 1,
+            objectName: 'Старый дуб',
+            objectType: 'tree',
+            author: 'Житель',
+            authorRole: 'resident',
+            date: '2024-01-15',
+            votes: 5,
+            comments: []
+        }
+    ];
+}
+
+function getColorByType(type) {
+    switch(type) {
+        case 'tree': return '#2E7D32';
+        case 'lawn': return '#4CAF50';
+        case 'bush': return '#8BC34A';
+        case 'flowerbed': return '#E91E63';
+        case 'bench': return '#795548';
+        case 'fountain': return '#00BCD4';
+        default: return '#757575';
+    }
+}
+
+function getIconByType(type) {
+    switch(type) {
+        case 'tree': return 'tree';
+        case 'lawn': return 'leaf';
+        case 'bush': return 'leaf';
+        case 'flowerbed': return 'spa';
+        case 'bench': return 'chair';
+        case 'fountain': return 'water';
+        default: return 'placemark';
+    }
+}
+
+function getProblemColor(status) {
+    switch(status) {
+        case 'new': return '#FF9800';
+        case 'inwork': return '#2196F3';
+        case 'solved': return '#4CAF50';
+        default: return '#757575';
+    }
+}
+
+function createObjectBalloon(obj) {
+    const typeNames = {
+        tree: 'Дерево',
+        lawn: 'Газон',
+        bush: 'Кустарник',
+        flowerbed: 'Клумба',
+        bench: 'Скамейка',
+        fountain: 'Фонтан'
+    };
+    
+    const conditionNames = {
+        good: 'Хорошее',
+        normal: 'Нормальное',
+        bad: 'Плохое',
+        critical: 'Критическое'
+    };
+    
+    return `
+        <div class="balloon-content">
+            <div class="balloon-header">
+                <h4>${obj.name || `Объект #${obj.id}`}</h4>
+                <span class="object-type">${typeNames[obj.type] || obj.type}</span>
+            </div>
+            <div class="balloon-body">
+                ${obj.description ? `<p>${obj.description}</p>` : ''}
+                ${obj.species ? `<p><strong>Вид:</strong> ${obj.species}</p>` : ''}
+                ${obj.age ? `<p><strong>Возраст/Размер:</strong> ${obj.age}</p>` : ''}
+                <p><strong>Состояние:</strong> ${conditionNames[obj.condition] || obj.condition}</p>
+                <p><i class="fas fa-map-marker-alt"></i> ${obj.coords[0].toFixed(6)}, ${obj.coords[1].toFixed(6)}</p>
+                <p><i class="far fa-user"></i> ${obj.createdByName || 'Неизвестно'}</p>
+                <p><i class="far fa-calendar"></i> ${obj.createdDate}</p>
+                
+                ${obj.problems && obj.problems.length > 0 ? `
+                    <div class="balloon-problems">
+                        <strong>Проблемы:</strong>
+                        <ul>
+                            ${obj.problems.slice(0, 3).map(p => `<li>${p.title}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                
+                <div class="balloon-actions">
+                    <button onclick="openProblemModalForObject(${JSON.stringify(obj).replace(/"/g, '&quot;')})" 
+                            class="btn-balloon-action">
+                        <i class="fas fa-exclamation-triangle"></i> Сообщить о проблеме
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function createProblemBalloon(problem) {
+    const severityLabels = {
+        low: 'Низкая',
+        medium: 'Средняя',
+        high: 'Высокая',
+        critical: 'Критическая'
+    };
+    
+    const statusLabels = {
+        new: 'Новая',
+        inwork: 'В работе',
+        solved: 'Решено'
+    };
+    
+    return `
+        <div class="balloon-content">
+            <div class="balloon-header">
+                <h4>${problem.title}</h4>
+                <span class="problem-status">${statusLabels[problem.status] || problem.status}</span>
+            </div>
+            <div class="balloon-body">
+                <p>${problem.description}</p>
+                <p><strong>Срочность:</strong> ${severityLabels[problem.severity] || problem.severity}</p>
+                ${problem.objectName ? `<p><strong>Объект:</strong> ${problem.objectName}</p>` : ''}
+                <p><i class="far fa-user"></i> ${problem.author}</p>
+                <p><i class="far fa-calendar"></i> ${problem.date}</p>
+                <p><i class="fas fa-map-marker-alt"></i> ${problem.location[0].toFixed(6)}, ${problem.location[1].toFixed(6)}</p>
+            </div>
+        </div>
+    `;
+}
+
+function createSuggestionBalloon(suggestion) {
+    const categoryLabels = {
+        greening: 'Озеленение',
+        improvement: 'Благоустройство',
+        bench: 'Скамейка',
+        playground: 'Детская площадка',
+        lighting: 'Освещение',
+        other: 'Другое'
+    };
+    
+    return `
+        <div class="balloon-content">
+            <div class="balloon-header">
+                <h4>${suggestion.title}</h4>
+                <span class="suggestion-category">${categoryLabels[suggestion.category] || suggestion.category}</span>
+            </div>
+            <div class="balloon-body">
+                ${suggestion.description ? `<p>${suggestion.description}</p>` : ''}
+                <p><i class="far fa-user"></i> ${suggestion.author}</p>
+                <p><i class="far fa-calendar"></i> ${suggestion.date}</p>
+                <p><i class="fas fa-map-marker-alt"></i> ${suggestion.location[0].toFixed(6)}, ${suggestion.location[1].toFixed(6)}</p>
+            </div>
+        </div>
+    `;
+}
+
+function createIdeaBalloon(idea) {
+    const categoryLabels = {
+        greening: 'Озеленение',
+        improvement: 'Благоустройство',
+        ecology: 'Экология',
+        infrastructure: 'Инфраструктура',
+        events: 'Мероприятия'
+    };
+    
+    const statusLabels = {
+        new: 'На рассмотрении',
+        review: 'На экспертизе',
+        voting: 'На голосовании',
+        approved: 'Одобрено',
+        rejected: 'Отклонено'
+    };
+    
+    return `
+        <div class="balloon-content">
+            <div class="balloon-header">
+                <h4>${idea.title}</h4>
+                <span class="idea-status">${statusLabels[idea.status] || idea.status}</span>
+            </div>
+            <div class="balloon-body">
+                <p>${idea.description}</p>
+                <p><strong>Категория:</strong> ${categoryLabels[idea.category] || idea.category}</p>
+                ${idea.budget ? `<p><strong>Бюджет:</strong> ${idea.budget.toLocaleString()} руб.</p>` : ''}
+                <p><i class="far fa-user"></i> ${idea.author}</p>
+                <p><i class="far fa-calendar"></i> ${idea.date}</p>
+                <p><i class="fas fa-map-marker-alt"></i> ${idea.location[0].toFixed(6)}, ${idea.location[1].toFixed(6)}</p>
+                
+                <div class="idea-stats">
+                    <span><i class="fas fa-thumbs-up"></i> ${idea.votes.up}</span>
+                    <span><i class="fas fa-thumbs-down"></i> ${idea.votes.down}</span>
+                    <span><i class="far fa-comment"></i> ${idea.comments}</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getTypeName(type) {
+    const types = {
+        tree: 'Дерево',
+        lawn: 'Газон',
+        bush: 'Кустарник',
+        flowerbed: 'Клумба',
+        bench: 'Скамейка',
+        fountain: 'Фонтан'
+    };
+    return types[type] || 'Объект';
+}
+
+function updateStatistics() {
+    // Статистика объектов
+    const treeCount = currentObjects.filter(o => o.type === 'tree').length;
+    const lawnCount = currentObjects.filter(o => o.type === 'lawn').length;
+    const bushCount = currentObjects.filter(o => o.type === 'bush').length;
+    const totalObjects = currentObjects.length;
+    
+    document.getElementById('treeCount')?.textContent = treeCount;
+    document.getElementById('lawnCount')?.textContent = lawnCount;
+    document.getElementById('bushCount')?.textContent = bushCount;
+    document.getElementById('statsTreeCount')?.textContent = treeCount;
+    document.getElementById('statsLawnCount')?.textContent = lawnCount;
+    document.getElementById('statsBushCount')?.textContent = bushCount;
+    document.getElementById('statsTotalObjects')?.textContent = totalObjects;
+    
+    // Статистика проблем
+    const problemNew = currentProblems.filter(p => p.status === 'new').length;
+    const problemWork = currentProblems.filter(p => p.status === 'inwork').length;
+    const problemSolved = currentProblems.filter(p => p.status === 'solved').length;
+    
+    document.getElementById('problemNewCount')?.textContent = problemNew;
+    document.getElementById('problemWorkCount')?.textContent = problemWork;
+    document.getElementById('problemSolvedCount')?.textContent = problemSolved;
+    
+    // Статистика предложений
+    const suggestionCount = currentSuggestions.length;
+    document.getElementById('suggestionCount')?.textContent = suggestionCount;
+    
+    // Статистика идей (будет обновляться в ideas.js)
+}
+
+// ============================================================================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ============================================================================
+function locateUser() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                const location = [position.coords.latitude, position.coords.longitude];
+                myMap.setCenter(location, 15);
+                showNotification('Ваше местоположение определено');
+            },
+            error => {
+                showNotification('Не удалось определить местоположение', 'error');
+            }
+        );
+    } else {
+        showNotification('Геолокация не поддерживается', 'error');
+    }
+}
+
+function showNotification(message, type = 'success') {
+    const notification = document.getElementById('notification');
+    if (!notification) return;
+    
+    notification.textContent = message;
+    notification.className = 'notification';
+    
+    const colors = {
+        success: '#4CAF50',
+        error: '#F44336',
+        warning: '#FF9800',
+        info: '#2196F3'
+    };
+    
+    notification.style.background = colors[type] || colors.success;
+    notification.style.display = 'block';
+    
+    setTimeout(() => {
+        notification.style.display = 'none';
+    }, 3000);
+}
+
+function setupLegend() {
+    const toggle = document.getElementById('legendToggle');
+    const body = document.getElementById('legendBody');
+    
+    if (toggle && body) {
+        toggle.addEventListener('click', () => {
+            const isVisible = body.style.display !== 'none';
+            body.style.display = isVisible ? 'none' : 'block';
+            const icon = toggle.querySelector('i');
+            icon.className = isVisible ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+        });
+    }
+}
+
+// ============================================================================
+// ГЛОБАЛЬНЫЕ ЭКСПОРТЫ
+// ============================================================================
+window.showNotification = showNotification;
+window.openProblemModalForObject = openProblemModalForObject;
