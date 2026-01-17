@@ -1,56 +1,101 @@
 // Система авторизации и ролей
 
 const USER_ROLES = {
-    GUEST: 'guest',        // Только просмотр
-    RESIDENT: 'resident',  // Житель: идеи + голосования
-    MONITOR: 'monitor',    // Мониторинг: проблемы
-    ADMIN: 'admin'         // Администратор: всё
+    RESIDENT: 'resident',      // Житель: идеи + голосования
+    MONITOR: 'monitor',        // Специалист по благоустройству
+    ADMIN: 'admin'             // Администрация
 };
 
 const ROLE_PERMISSIONS = {
-    guest: {
-        canView: true,
-        canAddProblems: false,
-        canAddIdeas: false,
-        canVote: false,
-        canModerate: false,
-        canCreateVoting: false,
-        maxIdeasPerMonth: 0
-    },
     resident: {
+        // Просмотр
         canView: true,
-        canAddProblems: false,
-        canAddIdeas: true,
-        canVote: true,
-        canModerate: false,
-        canCreateVoting: false,
-        maxIdeasPerMonth: 3
+        canViewObjects: true,
+        canViewProblems: true,
+        canViewIdeas: true,
+        canViewVoting: true,
+        
+        // Добавление
+        canAddObjects: false,      // НЕ может добавлять объекты (деревья, газоны)
+        canAddProblems: true,      // Может сообщать о проблемах на объектах
+        canAddIdeas: true,         // Может предлагать идеи
+        canAddSuggestions: true,   // Может ставить точки с предложениями
+        
+        // Голосование
+        canVote: true,             // Может голосовать
+        canCreateVoting: false,    // НЕ может создавать голосования
+        
+        // Модерация
+        canModerate: false,        // НЕ может модерировать
+        canDeleteObjects: false,   // НЕ может удалять объекты
+        
+        // Ограничения
+        maxIdeasPerMonth: 3,
+        maxProblemsPerDay: 5
     },
+    
     monitor: {
+        // Просмотр
         canView: true,
-        canAddProblems: true,
-        canAddIdeas: true,
+        canViewObjects: true,
+        canViewProblems: true,
+        canViewIdeas: true,
+        canViewVoting: true,
+        
+        // Добавление
+        canAddObjects: true,       // Может добавлять объекты (деревья, газоны, кустарники)
+        canAddProblems: true,      // Может сообщать о проблемах
+        canAddIdeas: true,         // Может предлагать идеи
+        canAddSuggestions: true,   // Может ставить точки с предложениями
+        
+        // Голосование
         canVote: true,
-        canModerate: false,
-        canCreateVoting: false,
-        maxIdeasPerMonth: 3
+        canCreateVoting: false,    // НЕ может создавать голосования
+        
+        // Модерация
+        canModerate: false,        // Может модерировать только свои объекты
+        canDeleteObjects: false,   // НЕ может удалять объекты других
+        
+        // Ограничения
+        maxIdeasPerMonth: 5,
+        maxProblemsPerDay: 10
     },
+    
     admin: {
+        // Просмотр
         canView: true,
-        canAddProblems: true,
-        canAddIdeas: true,
+        canViewObjects: true,
+        canViewProblems: true,
+        canViewIdeas: true,
+        canViewVoting: true,
+        
+        // Добавление
+        canAddObjects: true,       // Может добавлять объекты
+        canAddProblems: true,      // Может сообщать о проблемах
+        canAddIdeas: true,         // Может предлагать идеи
+        canAddSuggestions: true,   // Может ставить точки с предложениями
+        
+        // Голосование
         canVote: true,
-        canModerate: true,
-        canCreateVoting: true,
-        maxIdeasPerMonth: 999
+        canCreateVoting: true,     // Может создавать голосования
+        
+        // Модерация
+        canModerate: true,         // Может модерировать всё
+        canDeleteObjects: true,    // Может удалять любые объекты
+        canManageUsers: true,      // Может управлять пользователями
+        
+        // Ограничения
+        maxIdeasPerMonth: 999,
+        maxProblemsPerDay: 999
     }
 };
 
 class AuthSystem {
     constructor() {
-        this.currentRole = USER_ROLES.GUEST;
+        this.currentRole = USER_ROLES.RESIDENT; // По умолчанию "Житель"
         this.userId = this.generateUserId();
         this.userIdeas = this.getUserIdeas();
+        this.userProblems = this.getUserProblems();
         this.initialize();
     }
     
@@ -61,7 +106,6 @@ class AuthSystem {
     }
     
     generateUserId() {
-        // Генерируем уникальный ID пользователя
         let userId = localStorage.getItem('eco_user_id');
         if (!userId) {
             userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -74,28 +118,39 @@ class AuthSystem {
         const savedRole = localStorage.getItem('eco_user_role');
         if (savedRole && USER_ROLES[savedRole.toUpperCase()]) {
             this.currentRole = savedRole;
+        } else {
+            this.currentRole = USER_ROLES.RESIDENT;
+            localStorage.setItem('eco_user_role', this.currentRole);
         }
     }
     
     saveRole(role) {
+        if (!USER_ROLES[role.toUpperCase()]) {
+            console.error('Неизвестная роль:', role);
+            return;
+        }
+        
         this.currentRole = role;
         localStorage.setItem('eco_user_role', role);
         this.updateUI();
         this.showNotification(`Режим изменен: ${this.getRoleName(role)}`, 'success');
+        
+        // Перезагружаем данные, которые зависят от роли
+        if (window.ideasSystem) window.ideasSystem.renderIdeas();
+        if (window.votingSystem) window.votingSystem.renderVotings();
     }
     
     getRoleName(role) {
         const names = {
-            guest: 'Гость',
             resident: 'Житель',
-            monitor: 'Народный мониторинг',
+            monitor: 'Специалист',
             admin: 'Администратор'
         };
-        return names[role] || 'Неизвестно';
+        return names[role] || 'Житель';
     }
     
     getPermissions() {
-        return ROLE_PERMISSIONS[this.currentRole] || ROLE_PERMISSIONS.guest;
+        return ROLE_PERMISSIONS[this.currentRole] || ROLE_PERMISSIONS.resident;
     }
     
     setupEventListeners() {
@@ -113,7 +168,9 @@ class AuthSystem {
         document.querySelectorAll('.dropdown-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 const role = e.currentTarget.dataset.role;
-                this.saveRole(role);
+                if (role !== 'guest') { // Исключаем гостя, если он еще есть в HTML
+                    this.saveRole(role);
+                }
                 document.getElementById('userDropdown').classList.remove('show');
             });
         });
@@ -132,7 +189,9 @@ class AuthSystem {
             document.querySelectorAll('.role-option').forEach(option => {
                 option.addEventListener('click', (e) => {
                     const role = e.currentTarget.dataset.role;
-                    this.saveRole(role);
+                    if (role !== 'guest') {
+                        this.saveRole(role);
+                    }
                     this.closeRoleModal();
                 });
             });
@@ -168,6 +227,12 @@ class AuthSystem {
         // Показываем/скрываем кнопки в зависимости от роли
         const permissions = this.getPermissions();
         
+        // Кнопка добавления объекта (только специалист и админ)
+        const addObjectBtn = document.getElementById('addObjectBtn');
+        if (addObjectBtn) {
+            addObjectBtn.style.display = permissions.canAddObjects ? 'flex' : 'none';
+        }
+        
         // Кнопка добавления проблемы
         const addProblemBtn = document.getElementById('addProblemBtn');
         if (addProblemBtn) {
@@ -180,14 +245,22 @@ class AuthSystem {
             addIdeaBtn.style.display = permissions.canAddIdeas ? 'flex' : 'none';
         }
         
+        // Кнопка создания голосования (только админ)
+        const createVotingBtn = document.getElementById('createVotingBtn');
+        if (createVotingBtn) {
+            createVotingBtn.style.display = permissions.canCreateVoting ? 'flex' : 'none';
+        }
+        
         // Кнопки в навигации
         const navProblems = document.getElementById('navProblems');
         const navIdeas = document.getElementById('navIdeas');
         const navVoting = document.getElementById('navVoting');
+        const navObjects = document.getElementById('navObjects');
         
-        if (navProblems) navProblems.style.display = permissions.canAddProblems ? 'flex' : 'none';
-        if (navIdeas) navIdeas.style.display = permissions.canAddIdeas ? 'flex' : 'none';
-        if (navVoting) navVoting.style.display = permissions.canVote ? 'flex' : 'none';
+        if (navProblems) navProblems.style.display = 'flex';
+        if (navIdeas) navIdeas.style.display = 'flex';
+        if (navVoting) navVoting.style.display = 'flex';
+        if (navObjects) navObjects.style.display = 'flex';
         
         // Обновляем лимиты идей
         this.updateIdeaLimits();
@@ -202,8 +275,20 @@ class AuthSystem {
         };
     }
     
+    getUserProblems() {
+        const problems = localStorage.getItem(`eco_problems_${this.userId}`);
+        return problems ? JSON.parse(problems) : {
+            submitted: [],
+            lastReset: new Date().toDateString()
+        };
+    }
+    
     saveUserIdeas() {
         localStorage.setItem(`eco_ideas_${this.userId}`, JSON.stringify(this.userIdeas));
+    }
+    
+    saveUserProblems() {
+        localStorage.setItem(`eco_problems_${this.userId}`, JSON.stringify(this.userProblems));
     }
     
     canSubmitIdea() {
@@ -226,6 +311,26 @@ class AuthSystem {
         return submittedThisMonth < permissions.maxIdeasPerMonth;
     }
     
+    canSubmitProblem() {
+        const permissions = this.getPermissions();
+        if (!permissions.canAddProblems) return false;
+        
+        // Проверяем, не нужно ли сбросить счетчик
+        const today = new Date().toDateString();
+        if (this.userProblems.lastReset !== today) {
+            this.userProblems.submitted = [];
+            this.userProblems.lastReset = today;
+            this.saveUserProblems();
+        }
+        
+        // Проверяем лимит
+        const submittedToday = this.userProblems.submitted.filter(
+            problem => new Date(problem.date).toDateString() === today
+        ).length;
+        
+        return submittedToday < permissions.maxProblemsPerDay;
+    }
+    
     getRemainingIdeas() {
         if (!this.getPermissions().canAddIdeas) return 0;
         
@@ -237,6 +342,17 @@ class AuthSystem {
         return Math.max(0, this.getPermissions().maxIdeasPerMonth - submittedThisMonth);
     }
     
+    getRemainingProblems() {
+        if (!this.getPermissions().canAddProblems) return 0;
+        
+        const today = new Date().toDateString();
+        const submittedToday = this.userProblems.submitted.filter(
+            problem => new Date(problem.date).toDateString() === today
+        ).length;
+        
+        return Math.max(0, this.getPermissions().maxProblemsPerDay - submittedToday);
+    }
+    
     registerIdeaSubmission(ideaId) {
         this.userIdeas.submitted.push({
             id: ideaId,
@@ -244,6 +360,14 @@ class AuthSystem {
         });
         this.saveUserIdeas();
         this.updateIdeaLimits();
+    }
+    
+    registerProblemSubmission(problemId) {
+        this.userProblems.submitted.push({
+            id: problemId,
+            date: new Date().toISOString()
+        });
+        this.saveUserProblems();
     }
     
     updateIdeaLimits() {
@@ -268,7 +392,6 @@ class AuthSystem {
     }
     
     showNotification(message, type = 'info') {
-        // Используем общую систему уведомлений
         if (window.showNotification) {
             window.showNotification(message, type);
         } else {
@@ -281,10 +404,14 @@ class AuthSystem {
         const permissions = this.getPermissions();
         
         switch(action) {
+            case 'view_objects':
+                return permissions.canViewObjects;
+            case 'add_object':
+                return permissions.canAddObjects;
             case 'view_problems':
-                return permissions.canAddProblems;
+                return permissions.canViewProblems;
             case 'add_problem':
-                return permissions.canAddProblems;
+                return this.canSubmitProblem();
             case 'add_idea':
                 return this.canSubmitIdea();
             case 'vote':
@@ -293,18 +420,23 @@ class AuthSystem {
                 return permissions.canModerate;
             case 'create_voting':
                 return permissions.canCreateVoting;
+            case 'delete_object':
+                return permissions.canDeleteObjects;
+            case 'add_suggestion':
+                return permissions.canAddSuggestions;
             default:
                 return false;
         }
     }
     
-    // Получение информации о пользователе для отправки на сервер
+    // Получение информации о пользователе
     getUserInfo() {
         return {
             id: this.userId,
             role: this.currentRole,
             roleName: this.getRoleName(this.currentRole),
-            remainingIdeas: this.getRemainingIdeas()
+            remainingIdeas: this.getRemainingIdeas(),
+            remainingProblems: this.getRemainingProblems()
         };
     }
 }
