@@ -15,7 +15,7 @@ class VotingSystem {
     
     async loadVotings() {
         try {
-            const username = CONFIG?.GITHUB_USERNAME || 'YOUR_USERNAME';
+            const username = CONFIG?.GITHUB_USERNAME || 'ecopuls22-sys';
             const repo = CONFIG?.REPO_NAME || 'eco-biyisk-map';
             const url = `https://raw.githubusercontent.com/${username}/${repo}/main/data/votes.json`;
             
@@ -43,6 +43,7 @@ class VotingSystem {
                 id: 1,
                 title: 'Выбор места для нового сквера',
                 description: 'Голосование за лучшее место для создания нового сквера в рамках программы озеленения.',
+                type: 'location',
                 status: 'active',
                 startDate: weekAgo.toISOString().split('T')[0],
                 endDate: weekLater.toISOString().split('T')[0],
@@ -53,12 +54,16 @@ class VotingSystem {
                 ],
                 totalVotes: 301,
                 minVotes: 100,
-                ideaId: 2
+                createdBy: 'Администратор',
+                createdById: 'admin_001',
+                ideaId: 2,
+                createdAt: '2024-01-10'
             },
             {
                 id: 2,
                 title: 'Приоритеты благоустройства на 2024 год',
                 description: 'Выберите, на что в первую очередь направить бюджет благоустройства.',
+                type: 'priority',
                 status: 'coming',
                 startDate: weekLater.toISOString().split('T')[0],
                 endDate: new Date(weekLater.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -69,7 +74,32 @@ class VotingSystem {
                     { id: 4, text: 'Освещение улиц', votes: 0 }
                 ],
                 totalVotes: 0,
-                minVotes: 200
+                minVotes: 200,
+                createdBy: 'Администратор',
+                createdById: 'admin_001',
+                ideaId: null,
+                createdAt: '2024-01-15'
+            },
+            {
+                id: 3,
+                title: 'Выбор деревьев для посадки весной',
+                description: 'Решите, какие деревья лучше всего посадить в рамках весенней программы озеленения.',
+                type: 'idea',
+                status: 'finished',
+                startDate: '2024-01-01',
+                endDate: '2024-01-10',
+                options: [
+                    { id: 1, text: 'Березы', votes: 120 },
+                    { id: 2, text: 'Клены', votes: 85 },
+                    { id: 3, text: 'Липы', votes: 67 },
+                    { id: 4, text: 'Тополя', votes: 45 }
+                ],
+                totalVotes: 317,
+                minVotes: 100,
+                createdBy: 'Администратор',
+                createdById: 'admin_001',
+                ideaId: 1,
+                createdAt: '2023-12-20'
             }
         ];
     }
@@ -124,7 +154,7 @@ class VotingSystem {
         }
         
         if (filteredVotings.length === 0) {
-            container.innerHTML = '<div class="empty-state">Голосований пока нет</div>';
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-vote-yea"></i> Голосований пока нет</div>';
             return;
         }
         
@@ -139,21 +169,41 @@ class VotingSystem {
     }
     
     createVotingCard(voting) {
+        // Проверяем статус на основе дат
+        const now = new Date();
+        const startDate = new Date(voting.startDate);
+        const endDate = new Date(voting.endDate);
+        
+        let status = voting.status;
+        if (now < startDate) {
+            status = 'coming';
+        } else if (now > endDate) {
+            status = 'finished';
+        } else if (now >= startDate && now <= endDate) {
+            status = 'active';
+        }
+        
+        // Обновляем статус в данных
+        if (voting.status !== status) {
+            voting.status = status;
+            this.saveToLocalStorage();
+        }
+        
         const statusLabels = {
             active: { text: 'Активно', class: 'status-active' },
             coming: { text: 'Скоро', class: 'status-coming' },
             finished: { text: 'Завершено', class: 'status-finished' }
         };
         
-        const status = statusLabels[voting.status] || statusLabels.finished;
+        const statusInfo = statusLabels[status] || statusLabels.finished;
         const hasVoted = authSystem.hasVoted(voting.id);
-        const canVote = authSystem.checkPermission('vote') && !hasVoted && voting.status === 'active';
+        const canVote = authSystem.checkPermission('vote') && !hasVoted && status === 'active';
         
         return `
-            <div class="voting-card ${voting.status === 'active' ? 'active' : ''}" data-id="${voting.id}">
+            <div class="voting-card ${status === 'active' ? 'active' : ''}" data-id="${voting.id}">
                 <div class="voting-header">
                     <div class="voting-title">${voting.title}</div>
-                    <div class="voting-status ${status.class}">${status.text}</div>
+                    <div class="voting-status ${statusInfo.class}">${statusInfo.text}</div>
                 </div>
                 
                 <p class="voting-description">${voting.description}</p>
@@ -163,17 +213,19 @@ class VotingSystem {
                     <span><i class="far fa-calendar-times"></i> Окончание: ${voting.endDate}</span>
                 </div>
                 
-                <div class="voting-progress">
-                    <div class="progress-label">
-                        <span>Прогресс голосования:</span>
-                        <span>${voting.totalVotes} / ${voting.minVotes}</span>
+                ${status === 'active' || status === 'finished' ? `
+                    <div class="voting-progress">
+                        <div class="progress-label">
+                            <span>Прогресс голосования:</span>
+                            <span>${voting.totalVotes} / ${voting.minVotes}</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${Math.min(100, (voting.totalVotes / voting.minVotes) * 100)}%"></div>
+                        </div>
                     </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${Math.min(100, (voting.totalVotes / voting.minVotes) * 100)}%"></div>
-                    </div>
-                </div>
+                ` : ''}
                 
-                ${voting.status === 'active' ? `
+                ${status === 'active' ? `
                     <div class="voting-options">
                         ${voting.options.map(option => `
                             <div class="voting-option ${hasVoted && authSystem.userIdeas.votes[voting.id] === option.id ? 'selected' : ''}" 
@@ -197,9 +249,9 @@ class VotingSystem {
                     ` : ''}
                 ` : ''}
                 
-                ${voting.status === 'finished' ? `
+                ${status === 'finished' ? `
                     <div class="voting-results">
-                        <h4>Результаты:</h4>
+                        <h4>Предварительные результаты:</h4>
                         ${voting.options.map(option => {
                             const percent = voting.totalVotes > 0 ? (option.votes / voting.totalVotes * 100) : 0;
                             return `
@@ -216,6 +268,11 @@ class VotingSystem {
                         }).join('')}
                     </div>
                 ` : ''}
+                
+                <div class="voting-meta">
+                    <span><i class="far fa-user"></i> Создано: ${voting.createdBy}</span>
+                    ${voting.ideaId ? `<span><i class="fas fa-lightbulb"></i> Привязано к идее #${voting.ideaId}</span>` : ''}
+                </div>
             </div>
         `;
     }
@@ -224,6 +281,7 @@ class VotingSystem {
         // Сортируем по количеству голосов
         const sortedOptions = [...voting.options].sort((a, b) => b.votes - a.votes);
         const winner = sortedOptions[0];
+        const totalVotes = voting.totalVotes;
         
         return `
             <div class="voting-card" data-id="${voting.id}">
@@ -238,13 +296,20 @@ class VotingSystem {
                         <strong>Победитель:</strong> ${winner.text}
                     </div>
                     <div class="total-votes">
-                        Всего голосов: <strong>${voting.totalVotes}</strong>
+                        <i class="fas fa-users"></i>
+                        Всего голосов: <strong>${totalVotes}</strong>
                     </div>
+                    ${voting.minVotes ? `
+                        <div class="min-votes">
+                            <i class="fas fa-chart-line"></i>
+                            Минимум для решения: <strong>${voting.minVotes}</strong>
+                        </div>
+                    ` : ''}
                 </div>
                 
                 <div class="detailed-results">
                     ${sortedOptions.map((option, index) => {
-                        const percent = voting.totalVotes > 0 ? (option.votes / voting.totalVotes * 100) : 0;
+                        const percent = totalVotes > 0 ? (option.votes / totalVotes * 100) : 0;
                         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
                         
                         return `
@@ -264,6 +329,11 @@ class VotingSystem {
                             </div>
                         `;
                     }).join('')}
+                </div>
+                
+                <div class="voting-meta">
+                    <span><i class="far fa-calendar-alt"></i> ${voting.startDate} - ${voting.endDate}</span>
+                    <span><i class="far fa-user"></i> Создано: ${voting.createdBy}</span>
                 </div>
             </div>
         `;
@@ -338,6 +408,13 @@ class VotingSystem {
         if (option) {
             option.votes++;
             voting.totalVotes++;
+            
+            // Проверяем, не завершилось ли голосование
+            const now = new Date();
+            const endDate = new Date(voting.endDate);
+            if (now > endDate || voting.totalVotes >= voting.minVotes) {
+                voting.status = 'finished';
+            }
         }
         
         // Регистрируем голос
@@ -376,8 +453,12 @@ class VotingSystem {
             return;
         }
         
-        // Здесь будет модальное окно создания голосования
-        authSystem.showNotification('Функция создания голосований в разработке', 'info');
+        // Открываем модальное окно из script.js
+        if (window.openCreateVotingModal) {
+            window.openCreateVotingModal();
+        } else {
+            authSystem.showNotification('Функция создания голосований в разработке', 'info');
+        }
     }
 }
 
