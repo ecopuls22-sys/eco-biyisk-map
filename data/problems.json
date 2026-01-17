@@ -1,18 +1,21 @@
 [
   {
     "id": 1,
-    "objectId": 1,
+    "title": "Засохло дерево у школы",
     "type": "tree_problem",
-    "title": "Сломанная ветка",
-    "description": "Большая ветка сломана после шторма, висит и может упасть",
-    "severity": "medium",
+    "description": "Дерево полностью засохло, требуется спил",
+    "severity": "high",
     "status": "new",
-    "coords": [52.5186, 85.2076],
-    "author": "resident_12345",
+    "location": [52.5170, 85.2090],
+    "objectId": 1,
+    "objectName": "Старый дуб",
+    "objectType": "tree",
+    "author": "Житель",
     "authorRole": "resident",
-    "date": "2024-01-20",
-    "photos": [],
+    "authorId": "user_12345",
+    "date": "2024-01-15",
     "votes": 5,
-    "comments": []
+    "comments": [],
+    "photos": []
   }
 ]
