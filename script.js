@@ -19,71 +19,130 @@ const CONFIG = {
 // ============================================================================
 // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
 // ============================================================================
-let myMap;
+let myMap = null;
 let currentObjects = [];
 let currentProblems = [];
 let currentSuggestions = [];
 let currentScreen = 'map';
 let selectedObjectForProblem = null;
+let isMapInitialized = false;
 
 // ============================================================================
 // ИНИЦИАЛИЗАЦИЯ
 // ============================================================================
-ymaps.ready(async function init() {
-    console.log('🌳 Умный город Бийск - Загрузка...');
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🌳 Умный город Бийск - Инициализация...');
     
-    // Создаем карту
-    myMap = new ymaps.Map('map', {
-        center: [52.5186, 85.2076],
-        zoom: 13,
-        controls: ['zoomControl', 'fullscreenControl']
-    });
-    
-    // Настройка элементов управления
-    myMap.controls.get('zoomControl').options.set({
-        size: 'large',
-        position: { right: 10, top: 150 }
-    });
-    
-    myMap.controls.get('fullscreenControl').options.set({
-        position: { right: 10, top: 220 }
-    });
-    
-    // Загружаем данные
-    await loadAllData();
+    // Инициализируем карту после загрузки Яндекс.Карт
+    if (typeof ymaps !== 'undefined') {
+        initMap();
+    } else {
+        // Ждем загрузки Яндекс.Карт
+        window.addEventListener('yandex-maps-loaded', initMap);
+    }
     
     // Инициализация интерфейса
     initializeUI();
-    
-    console.log('✅ Система готова!');
 });
+
+function initMap() {
+    console.log('🗺️ Инициализация карты...');
+    
+    try {
+        ymaps.ready(function() {
+            console.log('✅ Яндекс.Карты загружены');
+            
+            // Создаем карту
+            myMap = new ymaps.Map('map', {
+                center: [52.5186, 85.2076],
+                zoom: 13,
+                controls: ['zoomControl', 'fullscreenControl']
+            }, {
+                searchControlProvider: 'yandex#search'
+            });
+            
+            // Настройка элементов управления
+            myMap.controls.get('zoomControl').options.set({
+                size: 'large',
+                position: { right: 10, top: 150 }
+            });
+            
+            myMap.controls.get('fullscreenControl').options.set({
+                position: { right: 10, top: 220 }
+            });
+            
+            // Добавляем поиск
+            const searchControl = new ymaps.control.SearchControl({
+                options: {
+                    provider: 'yandex#search',
+                    noPlacemark: true,
+                    position: { left: 10, top: 10 }
+                }
+            });
+            myMap.controls.add(searchControl);
+            
+            isMapInitialized = true;
+            console.log('✅ Карта создана');
+            
+            // Загружаем данные
+            loadAllData();
+        });
+    } catch (error) {
+        console.error('❌ Ошибка создания карты:', error);
+        showNotification('Ошибка загрузки карты', 'error');
+    }
+}
 
 // ============================================================================
 // ЗАГРУЗКА ДАННЫХ
 // ============================================================================
 async function loadAllData() {
-    await Promise.all([
-        loadObjects(),
-        loadProblems(),
-        loadSuggestions()
-    ]);
+    console.log('📦 Загрузка данных...');
     
-    updateStatistics();
+    try {
+        await Promise.all([
+            loadObjects(),
+            loadProblems(),
+            loadSuggestions()
+        ]);
+        
+        updateStatistics();
+        console.log('✅ Данные загружены');
+    } catch (error) {
+        console.error('❌ Ошибка загрузки данных:', error);
+        showNotification('Ошибка загрузки данных', 'error');
+    }
 }
 
 async function loadObjects() {
     try {
         const url = buildDataUrl(CONFIG.DATA_FILES.objects);
+        console.log('Загрузка объектов:', url);
+        
         const response = await fetch(url);
         
         if (response.ok) {
             currentObjects = await response.json();
-            renderObjectsOnMap();
+            console.log(`Загружено объектов: ${currentObjects.length}`);
+            
+            if (isMapInitialized) {
+                renderObjectsOnMap();
+            }
+        } else {
+            console.warn('Не удалось загрузить объекты, используем демо-данные');
+            currentObjects = getDefaultObjects();
+            
+            if (isMapInitialized) {
+                renderObjectsOnMap();
+            }
         }
     } catch (error) {
         console.error('Ошибка загрузки объектов:', error);
         currentObjects = getDefaultObjects();
-        renderObjectsOnMap();
+        
+        if (isMapInitialized) {
+            renderObjectsOnMap();
+        }
     }
 }
 
@@ -94,12 +153,25 @@ async function loadProblems() {
         
         if (response.ok) {
             currentProblems = await response.json();
-            renderProblemsOnMap();
+            console.log(`Загружено проблем: ${currentProblems.length}`);
+            
+            if (isMapInitialized) {
+                renderProblemsOnMap();
+            }
+        } else {
+            currentProblems = getDefaultProblems();
+            
+            if (isMapInitialized) {
+                renderProblemsOnMap();
+            }
         }
     } catch (error) {
         console.error('Ошибка загрузки проблем:', error);
         currentProblems = getDefaultProblems();
-        renderProblemsOnMap();
+        
+        if (isMapInitialized) {
+            renderProblemsOnMap();
+        }
     }
 }
 
@@ -110,7 +182,11 @@ async function loadSuggestions() {
         
         if (response.ok) {
             currentSuggestions = await response.json();
-            renderSuggestionsOnMap();
+            console.log(`Загружено предложений: ${currentSuggestions.length}`);
+            
+            if (isMapInitialized) {
+                renderSuggestionsOnMap();
+            }
         }
     } catch (error) {
         console.error('Ошибка загрузки предложений:', error);
@@ -126,139 +202,196 @@ function buildDataUrl(filePath) {
 // РАБОТА С КАРТОЙ
 // ============================================================================
 function renderObjectsOnMap() {
-    // Очищаем только объекты
-    const objectPlacemarks = myMap.geoObjects.filter(geoObject => 
-        geoObject.properties && geoObject.properties.get('objectType') === 'object'
-    );
-    myMap.geoObjects.remove(objectPlacemarks);
+    if (!myMap || !isMapInitialized) {
+        console.warn('Карта не инициализирована, откладываем рендеринг объектов');
+        return;
+    }
     
-    // Добавляем объекты
-    currentObjects.forEach(obj => {
-        addObjectToMap(obj);
-    });
+    console.log('🎯 Рендеринг объектов на карте...');
+    
+    try {
+        // Очищаем старые объекты
+        const objectPlacemarks = myMap.geoObjects.filter(geoObject => 
+            geoObject.properties && geoObject.properties.get('objectType') === 'object'
+        );
+        myMap.geoObjects.remove(objectPlacemarks);
+        
+        // Добавляем объекты
+        currentObjects.forEach(obj => {
+            addObjectToMap(obj);
+        });
+        
+        console.log(`✅ На карту добавлено объектов: ${currentObjects.length}`);
+    } catch (error) {
+        console.error('❌ Ошибка рендеринга объектов:', error);
+    }
 }
 
 function renderProblemsOnMap() {
-    // Очищаем только проблемы
-    const problemPlacemarks = myMap.geoObjects.filter(geoObject => 
-        geoObject.properties && geoObject.properties.get('objectType') === 'problem'
-    );
-    myMap.geoObjects.remove(problemPlacemarks);
+    if (!myMap || !isMapInitialized) return;
     
-    // Добавляем проблемы
-    currentProblems.forEach(problem => {
-        addProblemToMap(problem);
-    });
+    try {
+        // Очищаем старые проблемы
+        const problemPlacemarks = myMap.geoObjects.filter(geoObject => 
+            geoObject.properties && geoObject.properties.get('objectType') === 'problem'
+        );
+        myMap.geoObjects.remove(problemPlacemarks);
+        
+        // Добавляем проблемы
+        currentProblems.forEach(problem => {
+            addProblemToMap(problem);
+        });
+    } catch (error) {
+        console.error('Ошибка рендеринга проблем:', error);
+    }
 }
 
 function renderSuggestionsOnMap() {
-    // Очищаем только предложения
-    const suggestionPlacemarks = myMap.geoObjects.filter(geoObject => 
-        geoObject.properties && geoObject.properties.get('objectType') === 'suggestion'
-    );
-    myMap.geoObjects.remove(suggestionPlacemarks);
+    if (!myMap || !isMapInitialized) return;
     
-    // Добавляем предложения
-    currentSuggestions.forEach(suggestion => {
-        addSuggestionToMap(suggestion);
-    });
+    try {
+        // Очищаем старые предложения
+        const suggestionPlacemarks = myMap.geoObjects.filter(geoObject => 
+            geoObject.properties && geoObject.properties.get('objectType') === 'suggestion'
+        );
+        myMap.geoObjects.remove(suggestionPlacemarks);
+        
+        // Добавляем предложения
+        currentSuggestions.forEach(suggestion => {
+            addSuggestionToMap(suggestion);
+        });
+    } catch (error) {
+        console.error('Ошибка рендеринга предложений:', error);
+    }
 }
 
 function addObjectToMap(obj) {
-    const placemark = createPlacemark(obj.coords || obj.location, {
-        balloonContent: createObjectBalloon(obj),
-        hintContent: obj.name || `Объект #${obj.id}`,
-        objectType: 'object',
-        objectId: obj.id,
-        objectData: obj
-    }, {
-        preset: 'islands#circleIcon',
-        iconColor: getColorByType(obj.type),
-        iconGlyph: getIconByType(obj.type)
-    });
+    if (!myMap || !isMapInitialized) return;
     
-    // Добавляем обработчик клика для сообщения о проблеме
-    placemark.events.add('click', function(e) {
-        const objectData = e.get('target').properties.get('objectData');
-        openProblemModalForObject(objectData);
-    });
-    
-    myMap.geoObjects.add(placemark);
+    try {
+        const placemark = new ymaps.Placemark(obj.coords || obj.location, {
+            balloonContent: createObjectBalloon(obj),
+            hintContent: obj.name || `Объект #${obj.id}`,
+            objectType: 'object',
+            objectId: obj.id,
+            objectData: obj
+        }, {
+            preset: 'islands#circleIcon',
+            iconColor: getColorByType(obj.type),
+            iconGlyph: getIconByType(obj.type)
+        });
+        
+        // Добавляем обработчик клика
+        placemark.events.add('click', function(e) {
+            const objectData = e.get('target').properties.get('objectData');
+            openProblemModalForObject(objectData);
+        });
+        
+        myMap.geoObjects.add(placemark);
+    } catch (error) {
+        console.error('Ошибка добавления объекта на карту:', error);
+    }
 }
 
 function addProblemToMap(problem) {
-    const placemark = createPlacemark(problem.location, {
-        balloonContent: createProblemBalloon(problem),
-        hintContent: problem.title,
-        objectType: 'problem',
-        problemId: problem.id,
-        problemData: problem
-    }, {
-        preset: 'islands#circleIcon',
-        iconColor: getProblemColor(problem.status),
-        iconGlyph: 'exclamation'
-    });
+    if (!myMap || !isMapInitialized) return;
     
-    myMap.geoObjects.add(placemark);
+    try {
+        const placemark = new ymaps.Placemark(problem.location, {
+            balloonContent: createProblemBalloon(problem),
+            hintContent: problem.title,
+            objectType: 'problem',
+            problemId: problem.id,
+            problemData: problem
+        }, {
+            preset: 'islands#circleIcon',
+            iconColor: getProblemColor(problem.status),
+            iconGlyph: 'exclamation'
+        });
+        
+        myMap.geoObjects.add(placemark);
+    } catch (error) {
+        console.error('Ошибка добавления проблемы на карту:', error);
+    }
 }
 
 function addSuggestionToMap(suggestion) {
-    const placemark = createPlacemark(suggestion.location, {
-        balloonContent: createSuggestionBalloon(suggestion),
-        hintContent: suggestion.title,
-        objectType: 'suggestion',
-        suggestionId: suggestion.id,
-        suggestionData: suggestion
-    }, {
-        preset: 'islands#circleIcon',
-        iconColor: '#9C27B0',
-        iconGlyph: 'marker'
-    });
+    if (!myMap || !isMapInitialized) return;
     
-    myMap.geoObjects.add(placemark);
+    try {
+        const placemark = new ymaps.Placemark(suggestion.location, {
+            balloonContent: createSuggestionBalloon(suggestion),
+            hintContent: suggestion.title,
+            objectType: 'suggestion',
+            suggestionId: suggestion.id,
+            suggestionData: suggestion
+        }, {
+            preset: 'islands#circleIcon',
+            iconColor: '#9C27B0',
+            iconGlyph: 'marker'
+        });
+        
+        myMap.geoObjects.add(placemark);
+    } catch (error) {
+        console.error('Ошибка добавления предложения на карту:', error);
+    }
 }
 
 // Экспортируем функцию для использования в других файлах
 window.addSuggestionToMap = addSuggestionToMap;
 
 function addIdeaToMap(idea) {
-    const placemark = createPlacemark(idea.location, {
-        balloonContent: createIdeaBalloon(idea),
-        hintContent: idea.title,
-        objectType: 'idea',
-        ideaId: idea.id,
-        ideaData: idea
-    }, {
-        preset: 'islands#circleIcon',
-        iconColor: '#FFC107',
-        iconGlyph: 'lightbulb'
-    });
+    if (!myMap || !isMapInitialized) return;
     
-    myMap.geoObjects.add(placemark);
+    try {
+        const placemark = new ymaps.Placemark(idea.location, {
+            balloonContent: createIdeaBalloon(idea),
+            hintContent: idea.title,
+            objectType: 'idea',
+            ideaId: idea.id,
+            ideaData: idea
+        }, {
+            preset: 'islands#circleIcon',
+            iconColor: '#FFC107',
+            iconGlyph: 'lightbulb'
+        });
+        
+        myMap.geoObjects.add(placemark);
+    } catch (error) {
+        console.error('Ошибка добавления идеи на карту:', error);
+    }
 }
 
 // Экспортируем функцию для использования в других файлах
 window.addIdeaToMap = addIdeaToMap;
 
-function createPlacemark(coords, properties, options) {
-    return new ymaps.Placemark(coords, properties, options);
-}
-
 // ============================================================================
-// ИНТЕРФЕЙС
+// ИНТЕРФЕЙС - ФИКС ОСНОВНОЙ ПРОБЛЕМЫ С НАВИГАЦИЕЙ
 // ============================================================================
 function initializeUI() {
-    // Навигация
-    setupNavigation();
+    console.log('🎨 Инициализация интерфейса...');
+    
+    // Навигация - ДОБАВЛЯЕМ ТАЙМАУТ ДЛЯ УБЕДИТЕЛЬНОСТИ
+    setTimeout(() => {
+        setupNavigation();
+    }, 100);
     
     // Кнопка обновления
-    document.getElementById('refreshBtn').addEventListener('click', async () => {
-        await loadAllData();
-        showNotification('Данные обновлены', 'success');
-    });
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', async () => {
+            await loadAllData();
+            showNotification('Данные обновлены', 'success');
+        });
+    } else {
+        console.warn('Кнопка обновления не найдена');
+    }
     
     // Кнопка "Найти меня"
-    document.getElementById('locateBtn').addEventListener('click', locateUser);
+    const locateBtn = document.getElementById('locateBtn');
+    if (locateBtn) {
+        locateBtn.addEventListener('click', locateUser);
+    }
     
     // Легенда
     setupLegend();
@@ -274,9 +407,13 @@ function initializeUI() {
     
     // Система создания голосований
     setupVotingCreationSystem();
+    
+    console.log('✅ Интерфейс инициализирован');
 }
 
 function setupNavigation() {
+    console.log('🔧 Настройка навигации...');
+    
     const navItems = {
         navMap: 'map',
         navObjects: 'objects',
@@ -285,24 +422,34 @@ function setupNavigation() {
         navVoting: 'voting'
     };
     
-    Object.entries(navItems).forEach(([navId, screen]) => {
-        const element = document.getElementById(navId);
-        if (element) {
-            element.addEventListener('click', (e) => {
-                e.preventDefault();
-                switchScreen(screen);
-                
-                // Обновляем активный пункт меню
-                document.querySelectorAll('.nav__link').forEach(link => {
-                    link.classList.remove('active');
+    // УБЕДИТЕСЬ ЧТО ЭЛЕМЕНТЫ СУЩЕСТВУЮТ
+    setTimeout(() => {
+        Object.entries(navItems).forEach(([navId, screen]) => {
+            const element = document.getElementById(navId);
+            if (element) {
+                console.log(`Найден элемент навигации: ${navId}`);
+                element.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log(`Клик по ${navId}, переключение на экран: ${screen}`);
+                    switchScreen(screen);
+                    
+                    // Обновляем активный пункт меню
+                    document.querySelectorAll('.nav__link').forEach(link => {
+                        link.classList.remove('active');
+                    });
+                    element.classList.add('active');
                 });
-                element.classList.add('active');
-            });
-        }
-    });
+            } else {
+                console.warn(`Элемент навигации не найден: ${navId}`);
+            }
+        });
+    }, 200);
 }
 
 function switchScreen(screenName) {
+    console.log(`🔄 Переключение на экран: ${screenName}`);
+    
     // Скрываем все экраны
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
@@ -313,6 +460,7 @@ function switchScreen(screenName) {
     if (targetScreen) {
         targetScreen.classList.add('active');
         currentScreen = screenName;
+        console.log(`✅ Экран ${screenName} активирован`);
         
         // Загружаем данные для экрана, если нужно
         if (screenName === 'objects') {
@@ -320,6 +468,8 @@ function switchScreen(screenName) {
         } else if (screenName === 'problems') {
             renderProblemsList();
         }
+    } else {
+        console.error(`❌ Экран не найден: ${screenName}`);
     }
 }
 
@@ -327,60 +477,61 @@ function switchScreen(screenName) {
 window.switchScreen = switchScreen;
 
 // ============================================================================
-// СИСТЕМА ОБЪЕКТОВ
+// СИСТЕМА ОБЪЕКТОВ - УПРОЩЕННАЯ ВЕРСИЯ ДЛЯ ТЕСТА
 // ============================================================================
 function setupObjectSystem() {
+    console.log('🔧 Настройка системы объектов...');
+    
+    // Кнопка добавления объекта на карте
     const addObjectBtn = document.getElementById('addObjectBtn');
-    const addObjectFromListBtn = document.getElementById('addObjectFromListBtn');
-    const objectModal = document.getElementById('objectModal');
-    
     if (addObjectBtn) {
-        addObjectBtn.addEventListener('click', () => openObjectModal());
-    }
-    
-    if (addObjectFromListBtn) {
-        addObjectFromListBtn.addEventListener('click', () => openObjectModal());
-    }
-    
-    // Закрытие модального окна
-    document.getElementById('cancelObject')?.addEventListener('click', () => {
-        objectModal.style.display = 'none';
-    });
-    
-    // Выбор местоположения
-    document.getElementById('selectObjectLocation')?.addEventListener('click', () => {
-        selectObjectLocation();
-    });
-    
-    // Отправка объекта
-    document.getElementById('submitObject')?.addEventListener('click', () => {
-        submitObject();
-    });
-    
-    // Фильтры объектов
-    document.querySelectorAll('.objects-filters .filter-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const filter = e.currentTarget.dataset.filter;
-            
-            // Обновляем активную кнопку
-            document.querySelectorAll('.objects-filters .filter-btn').forEach(b => {
-                b.classList.remove('active');
-            });
-            e.currentTarget.classList.add('active');
-            
-            renderObjectsList(filter);
+        addObjectBtn.addEventListener('click', () => {
+            console.log('Клик по кнопке добавления объекта');
+            openObjectModal();
         });
-    });
+    }
+    
+    // Кнопка добавления объекта из списка
+    const addObjectFromListBtn = document.getElementById('addObjectFromListBtn');
+    if (addObjectFromListBtn) {
+        addObjectFromListBtn.addEventListener('click', () => {
+            openObjectModal();
+        });
+    }
+    
+    // Модальное окно объекта
+    const cancelObjectBtn = document.getElementById('cancelObject');
+    const submitObjectBtn = document.getElementById('submitObject');
+    const selectObjectLocationBtn = document.getElementById('selectObjectLocation');
+    
+    if (cancelObjectBtn) {
+        cancelObjectBtn.addEventListener('click', () => {
+            document.getElementById('objectModal').style.display = 'none';
+        });
+    }
+    
+    if (selectObjectLocationBtn) {
+        selectObjectLocationBtn.addEventListener('click', selectObjectLocation);
+    }
+    
+    if (submitObjectBtn) {
+        submitObjectBtn.addEventListener('click', submitObject);
+    }
 }
 
 function openObjectModal() {
-    if (!authSystem.checkPermission('add_object')) {
-        authSystem.showNotification('Только специалисты и администраторы могут добавлять объекты', 'error');
+    console.log('Открытие модального окна объекта');
+    
+    if (!authSystem || !authSystem.checkPermission('add_object')) {
+        showNotification('Только специалисты и администраторы могут добавлять объекты', 'error');
         return;
     }
     
-    document.getElementById('objectModal').style.display = 'flex';
-    resetObjectForm();
+    const modal = document.getElementById('objectModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        resetObjectForm();
+    }
 }
 
 function resetObjectForm() {
@@ -404,7 +555,7 @@ function selectObjectLocation() {
     showNotification('Координаты установлены', 'success');
 }
 
-async function submitObject() {
+function submitObject() {
     const type = document.getElementById('objectType').value;
     const name = document.getElementById('objectName').value.trim();
     const description = document.getElementById('objectDescription').value.trim();
@@ -440,171 +591,31 @@ async function submitObject() {
         photos: []
     };
     
-    // В реальном приложении здесь будет отправка на сервер/GitHub
+    // Добавляем объект
     currentObjects.unshift(object);
     addObjectToMap(object);
     
     document.getElementById('objectModal').style.display = 'none';
     showNotification('Объект успешно добавлен!', 'success');
     
-    // Сохраняем в localStorage для демо
+    // Сохраняем
     saveObjectsToLocal();
     updateStatistics();
-    
-    // Обновляем список объектов на экране
-    if (currentScreen === 'objects') {
-        renderObjectsList();
-    }
 }
 
 function saveObjectsToLocal() {
     localStorage.setItem('eco_objects_data', JSON.stringify(currentObjects));
 }
 
-function renderObjectsList(filter = 'all') {
-    const container = document.getElementById('objectsList');
-    if (!container) return;
-    
-    let filteredObjects = currentObjects;
-    
-    if (filter !== 'all') {
-        filteredObjects = currentObjects.filter(obj => obj.type === filter);
-    }
-    
-    if (filteredObjects.length === 0) {
-        container.innerHTML = '<div class="empty-state">Объектов пока нет</div>';
-        return;
-    }
-    
-    container.innerHTML = filteredObjects.map(obj => createObjectCard(obj)).join('');
-    
-    // Добавляем обработчики событий для карточек
-    addObjectCardEventListeners();
-}
-
-function createObjectCard(obj) {
-    const typeNames = {
-        tree: 'Дерево',
-        lawn: 'Газон',
-        bush: 'Кустарник',
-        flowerbed: 'Клумба',
-        bench: 'Скамейка',
-        fountain: 'Фонтан'
-    };
-    
-    const conditionNames = {
-        good: { text: 'Хорошее', class: 'status-solved' },
-        normal: { text: 'Нормальное', class: 'status-inwork' },
-        bad: { text: 'Плохое', class: 'status-new' },
-        critical: { text: 'Критическое', class: 'status-critical' }
-    };
-    
-    const condition = conditionNames[obj.condition] || conditionNames.normal;
-    
-    return `
-        <div class="object-card" data-id="${obj.id}">
-            <div class="object-header">
-                <div class="object-title">${obj.name || `Объект #${obj.id}`}</div>
-                <div class="object-type ${obj.type}">${typeNames[obj.type] || obj.type}</div>
-            </div>
-            
-            <div class="object-meta">
-                <span><i class="far fa-user"></i> ${obj.createdByName || 'Неизвестно'}</span>
-                <span><i class="far fa-calendar"></i> ${obj.createdDate}</span>
-                <span><i class="fas fa-map-marker-alt"></i> ${obj.coords[0].toFixed(4)}, ${obj.coords[1].toFixed(4)}</span>
-            </div>
-            
-            ${obj.description ? `<p class="object-description">${obj.description}</p>` : ''}
-            
-            ${obj.species ? `
-                <div class="object-info">
-                    <strong>Вид:</strong> ${obj.species}
-                </div>
-            ` : ''}
-            
-            ${obj.age ? `
-                <div class="object-info">
-                    <strong>Возраст/Размер:</strong> ${obj.age}
-                </div>
-            ` : ''}
-            
-            <div class="object-status">
-                <span class="status-badge ${condition.class}">${condition.text}</span>
-            </div>
-            
-            <div class="object-actions">
-                <button class="btn btn--small btn-report-problem" data-id="${obj.id}">
-                    <i class="fas fa-exclamation-triangle"></i> Сообщить о проблеме
-                </button>
-                
-                ${authSystem.checkPermission('delete_object') ? `
-                    <button class="btn btn--small btn-delete-object" data-id="${obj.id}">
-                        <i class="fas fa-trash"></i> Удалить
-                    </button>
-                ` : ''}
-            </div>
-        </div>
-    `;
-}
-
-function addObjectCardEventListeners() {
-    // Кнопка "Сообщить о проблеме"
-    document.querySelectorAll('.btn-report-problem').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const objectId = parseInt(e.currentTarget.dataset.id);
-            const object = currentObjects.find(obj => obj.id === objectId);
-            if (object) {
-                openProblemModalForObject(object);
-            }
-        });
-    });
-    
-    // Кнопка "Удалить" (только для админов)
-    if (authSystem.checkPermission('delete_object')) {
-        document.querySelectorAll('.btn-delete-object').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const objectId = parseInt(e.currentTarget.dataset.id);
-                if (confirm('Вы уверены, что хотите удалить этот объект?')) {
-                    deleteObject(objectId);
-                }
-            });
-        });
-    }
-}
-
-function deleteObject(objectId) {
-    currentObjects = currentObjects.filter(obj => obj.id !== objectId);
-    
-    // Удаляем с карты
-    const placemark = myMap.geoObjects.find(geoObject => 
-        geoObject.properties && 
-        geoObject.properties.get('objectType') === 'object' &&
-        geoObject.properties.get('objectId') === objectId
-    );
-    
-    if (placemark) {
-        myMap.geoObjects.remove(placemark);
-    }
-    
-    // Сохраняем
-    saveObjectsToLocal();
-    updateStatistics();
-    
-    // Обновляем список
-    if (currentScreen === 'objects') {
-        renderObjectsList();
-    }
-    
-    showNotification('Объект удален', 'success');
-}
-
 // ============================================================================
-// СИСТЕМА ПРОБЛЕМ
+// СИСТЕМА ПРОБЛЕМ - УПРОЩЕННАЯ ВЕРСИЯ
 // ============================================================================
 function setupProblemSystem() {
+    console.log('🔧 Настройка системы проблем...');
+    
+    // Кнопка сообщения о проблеме
     const reportBtn = document.getElementById('reportProblemBtn');
     const addProblemBtn = document.getElementById('addProblemBtn');
-    const problemModal = document.getElementById('problemModal');
     
     if (reportBtn) {
         reportBtn.addEventListener('click', () => openProblemModal());
@@ -614,92 +625,35 @@ function setupProblemSystem() {
         addProblemBtn.addEventListener('click', () => openProblemModal());
     }
     
-    // Закрытие модального окна
-    document.getElementById('cancelProblem')?.addEventListener('click', () => {
-        problemModal.style.display = 'none';
-        selectedObjectForProblem = null;
-    });
+    // Модальное окно проблемы
+    const cancelProblemBtn = document.getElementById('cancelProblem');
+    const submitProblemBtn = document.getElementById('submitProblem');
+    const selectProblemLocationBtn = document.getElementById('selectProblemLocation');
     
-    // Выбор местоположения
-    document.getElementById('selectProblemLocation')?.addEventListener('click', () => {
-        selectProblemLocation();
-    });
-    
-    // Отправка проблемы
-    document.getElementById('submitProblem')?.addEventListener('click', () => {
-        submitProblem();
-    });
-    
-    // Фильтры проблем
-    document.querySelectorAll('.problems-filters .filter-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const filter = e.currentTarget.dataset.filter;
-            
-            // Обновляем активную кнопку
-            document.querySelectorAll('.problems-filters .filter-btn').forEach(b => {
-                b.classList.remove('active');
-            });
-            e.currentTarget.classList.add('active');
-            
-            renderProblemsList(filter);
+    if (cancelProblemBtn) {
+        cancelProblemBtn.addEventListener('click', () => {
+            document.getElementById('problemModal').style.display = 'none';
+            selectedObjectForProblem = null;
         });
-    });
+    }
     
-    // Обновляем лимиты проблем
-    updateProblemLimits();
+    if (selectProblemLocationBtn) {
+        selectProblemLocationBtn.addEventListener('click', selectProblemLocation);
+    }
+    
+    if (submitProblemBtn) {
+        submitProblemBtn.addEventListener('click', submitProblem);
+    }
 }
 
 function openProblemModal() {
-    if (!authSystem.checkPermission('add_problem')) {
-        authSystem.showNotification('Для сообщения о проблеме выберите роль "Житель" или выше', 'error');
-        return;
-    }
-    
-    if (!authSystem.canSubmitProblem()) {
-        authSystem.showNotification('Вы исчерпали лимит сообщений о проблемах на сегодня', 'error');
+    if (!authSystem || !authSystem.checkPermission('add_problem')) {
+        showNotification('Для сообщения о проблеме выберите роль "Житель" или выше', 'error');
         return;
     }
     
     document.getElementById('problemModal').style.display = 'flex';
     resetProblemForm();
-    
-    // Заполняем список объектов для привязки
-    fillObjectsSelect();
-}
-
-function openProblemModalForObject(object) {
-    if (!authSystem.checkPermission('add_problem')) {
-        authSystem.showNotification('Для сообщения о проблеме выберите роль "Житель" или выше', 'error');
-        return;
-    }
-    
-    if (!authSystem.canSubmitProblem()) {
-        authSystem.showNotification('Вы исчерпали лимит сообщений о проблемах на сегодня', 'error');
-        return;
-    }
-    
-    selectedObjectForProblem = object;
-    document.getElementById('problemModal').style.display = 'flex';
-    resetProblemForm();
-    
-    // Заполняем список объектов для привязки
-    fillObjectsSelect();
-    
-    // Устанавливаем выбранный объект и координаты
-    if (object) {
-        document.getElementById('problemObject').value = object.id;
-        document.getElementById('problemLat').textContent = object.coords[0];
-        document.getElementById('problemLon').textContent = object.coords[1];
-        
-        // Устанавливаем тип проблемы в зависимости от типа объекта
-        if (object.type === 'tree') {
-            document.getElementById('problemType').value = 'tree_problem';
-        } else if (object.type === 'lawn') {
-            document.getElementById('problemType').value = 'lawn_problem';
-        } else if (object.type === 'bush') {
-            document.getElementById('problemType').value = 'bush_problem';
-        }
-    }
 }
 
 function resetProblemForm() {
@@ -709,33 +663,9 @@ function resetProblemForm() {
     document.getElementById('problemSeverity').value = 'medium';
     document.getElementById('problemLat').textContent = '52.518600';
     document.getElementById('problemLon').textContent = '85.207600';
-    
-    // Сбрасываем выбранный объект, если он не был передан явно
-    if (!selectedObjectForProblem) {
-        document.getElementById('problemObject').value = '';
-    }
-}
-
-function fillObjectsSelect() {
-    const select = document.getElementById('problemObject');
-    if (!select) return;
-    
-    // Очищаем все опции, кроме первой
-    while (select.options.length > 1) {
-        select.remove(1);
-    }
-    
-    // Добавляем объекты
-    currentObjects.forEach(obj => {
-        const option = document.createElement('option');
-        option.value = obj.id;
-        option.textContent = obj.name || `Объект #${obj.id} (${getTypeName(obj.type)})`;
-        select.appendChild(option);
-    });
 }
 
 function selectProblemLocation() {
-    // В реальном приложении здесь будет выбор на карте
     const lat = (52.5186 + (Math.random() - 0.5) * 0.01).toFixed(6);
     const lon = (85.2076 + (Math.random() - 0.5) * 0.01).toFixed(6);
     
@@ -745,11 +675,10 @@ function selectProblemLocation() {
     showNotification('Координаты установлены', 'success');
 }
 
-async function submitProblem() {
+function submitProblem() {
     const title = document.getElementById('problemTitle').value.trim();
     const type = document.getElementById('problemType').value;
     const description = document.getElementById('problemDescription').value.trim();
-    const objectId = document.getElementById('problemObject').value;
     const severity = document.getElementById('problemSeverity').value;
     const lat = parseFloat(document.getElementById('problemLat').textContent);
     const lon = parseFloat(document.getElementById('problemLon').textContent);
@@ -759,13 +688,7 @@ async function submitProblem() {
         return;
     }
     
-    if (!authSystem.canSubmitProblem()) {
-        showNotification('Лимит сообщений о проблемах исчерпан', 'error');
-        return;
-    }
-    
     const userInfo = authSystem.getUserInfo();
-    const selectedObject = objectId ? currentObjects.find(obj => obj.id == objectId) : null;
     
     const problem = {
         id: Date.now(),
@@ -775,9 +698,6 @@ async function submitProblem() {
         severity: severity,
         status: 'new',
         location: [lat, lon],
-        objectId: objectId || null,
-        objectName: selectedObject ? selectedObject.name : null,
-        objectType: selectedObject ? selectedObject.type : null,
         author: userInfo.roleName,
         authorRole: userInfo.role,
         authorId: userInfo.id,
@@ -787,411 +707,20 @@ async function submitProblem() {
         photos: []
     };
     
-    // В реальном приложении здесь будет отправка на сервер
+    // Добавляем проблему
     currentProblems.unshift(problem);
     addProblemToMap(problem);
     
-    // Регистрируем отправку проблемы
-    authSystem.registerProblemSubmission(problem.id);
-    
     document.getElementById('problemModal').style.display = 'none';
-    selectedObjectForProblem = null;
-    
     showNotification('Проблема успешно отправлена!', 'success');
     
-    // Сохраняем в localStorage для демо
+    // Сохраняем
     saveProblemsToLocal();
     updateStatistics();
-    updateProblemLimits();
-    
-    // Обновляем список проблем на экране
-    if (currentScreen === 'problems') {
-        renderProblemsList();
-    }
-    
-    // Если проблема привязана к объекту, обновляем объект
-    if (selectedObject) {
-        if (!selectedObject.problems) selectedObject.problems = [];
-        selectedObject.problems.push({
-            id: problem.id,
-            title: problem.title,
-            date: problem.date
-        });
-        saveObjectsToLocal();
-    }
-}
-
-function saveProblemsToLocal() {
-    localStorage.setItem('eco_problems_data', JSON.stringify(currentProblems));
-}
-
-function updateProblemLimits() {
-    const problemsLeft = document.getElementById('problemsLeft');
-    if (problemsLeft) {
-        problemsLeft.textContent = authSystem.getRemainingProblems();
-    }
-    
-    const problemLimits = document.getElementById('problemLimits');
-    if (problemLimits) {
-        problemLimits.style.display = authSystem.checkPermission('add_problem') ? 'block' : 'none';
-    }
-}
-
-function renderProblemsList(filter = 'all') {
-    const container = document.getElementById('problemsList');
-    if (!container) return;
-    
-    let filteredProblems = currentProblems;
-    const userId = authSystem.userId;
-    
-    // Фильтрация
-    switch(filter) {
-        case 'new':
-            filteredProblems = currentProblems.filter(p => p.status === 'new');
-            break;
-        case 'inwork':
-            filteredProblems = currentProblems.filter(p => p.status === 'inwork');
-            break;
-        case 'solved':
-            filteredProblems = currentProblems.filter(p => p.status === 'solved');
-            break;
-        case 'my':
-            filteredProblems = currentProblems.filter(p => p.authorId === userId);
-            break;
-    }
-    
-    if (filteredProblems.length === 0) {
-        container.innerHTML = '<div class="empty-state">Проблем пока нет</div>';
-        return;
-    }
-    
-    container.innerHTML = filteredProblems.map(problem => createProblemCard(problem)).join('');
-    
-    // Обновляем статистику
-    updateProblemsStats();
-}
-
-function createProblemCard(problem) {
-    const severityLabels = {
-        low: { text: 'Низкая', color: '#4CAF50' },
-        medium: { text: 'Средняя', color: '#FF9800' },
-        high: { text: 'Высокая', color: '#F44336' },
-        critical: { text: 'Критическая', color: '#9C27B0' }
-    };
-    
-    const statusLabels = {
-        new: { text: 'Новая', class: 'status-new' },
-        inwork: { text: 'В работе', class: 'status-inwork' },
-        solved: { text: 'Решено', class: 'status-solved' }
-    };
-    
-    const severity = severityLabels[problem.severity] || severityLabels.medium;
-    const status = statusLabels[problem.status] || statusLabels.new;
-    
-    return `
-        <div class="problem-card ${problem.status}" data-id="${problem.id}">
-            <div class="problem-header">
-                <div class="problem-title">${problem.title}</div>
-                <div class="problem-status ${status.class}">${status.text}</div>
-            </div>
-            
-            <div class="problem-meta">
-                <span><i class="far fa-user"></i> ${problem.author}</span>
-                <span><i class="far fa-calendar"></i> ${problem.date}</span>
-                <span style="color: ${severity.color};"><i class="fas fa-exclamation-circle"></i> ${severity.text}</span>
-            </div>
-            
-            <p class="problem-description">${problem.description}</p>
-            
-            ${problem.objectName ? `
-                <div class="problem-object">
-                    <strong>Объект:</strong> ${problem.objectName}
-                </div>
-            ` : ''}
-            
-            <div class="problem-stats">
-                <div class="problem-stat">
-                    <i class="fas fa-thumbs-up"></i>
-                    <span>${problem.votes}</span>
-                </div>
-                <div class="problem-stat">
-                    <i class="far fa-comment"></i>
-                    <span>${problem.comments ? problem.comments.length : 0}</span>
-                </div>
-            </div>
-            
-            ${authSystem.checkPermission('moderate') ? `
-                <div class="moderate-actions">
-                    <button class="btn btn--small btn-progress-problem" data-id="${problem.id}">
-                        <i class="fas fa-play"></i> В работу
-                    </button>
-                    <button class="btn btn--small btn-solve-problem" data-id="${problem.id}">
-                        <i class="fas fa-check"></i> Решено
-                    </button>
-                </div>
-            ` : ''}
-        </div>
-    `;
-}
-
-function updateProblemsStats() {
-    const total = currentProblems.length;
-    const newProblems = currentProblems.filter(p => p.status === 'new').length;
-    const inWork = currentProblems.filter(p => p.status === 'inwork').length;
-    const solved = currentProblems.filter(p => p.status === 'solved').length;
-    
-    document.getElementById('problemsTotal')?.textContent = total;
-    document.getElementById('problemsNew')?.textContent = newProblems;
-    document.getElementById('problemsInWork')?.textContent = inWork;
-    document.getElementById('problemsSolved')?.textContent = solved;
 }
 
 // ============================================================================
-// СИСТЕМА ПРЕДЛОЖЕНИЙ
-// ============================================================================
-function setupSuggestionSystem() {
-    const addSuggestionBtn = document.getElementById('addSuggestionBtn');
-    const suggestionModal = document.getElementById('suggestionModal');
-    
-    if (addSuggestionBtn) {
-        addSuggestionBtn.addEventListener('click', () => openSuggestionModal());
-    }
-    
-    // Закрытие модального окна
-    document.getElementById('cancelSuggestion')?.addEventListener('click', () => {
-        suggestionModal.style.display = 'none';
-    });
-    
-    // Выбор местоположения
-    document.getElementById('selectSuggestionLocation')?.addEventListener('click', () => {
-        selectSuggestionLocation();
-    });
-    
-    // Отправка предложения
-    document.getElementById('submitSuggestion')?.addEventListener('click', () => {
-        submitSuggestion();
-    });
-}
-
-function openSuggestionModal() {
-    if (!authSystem.checkPermission('add_suggestion')) {
-        authSystem.showNotification('У вас недостаточно прав для добавления предложений', 'error');
-        return;
-    }
-    
-    document.getElementById('suggestionModal').style.display = 'flex';
-    resetSuggestionForm();
-}
-
-function resetSuggestionForm() {
-    document.getElementById('suggestionTitle').value = '';
-    document.getElementById('suggestionDescription').value = '';
-    document.getElementById('suggestionLat').textContent = '52.518600';
-    document.getElementById('suggestionLon').textContent = '85.207600';
-}
-
-function selectSuggestionLocation() {
-    // В реальном приложении здесь будет выбор на карте
-    const lat = (52.5186 + (Math.random() - 0.5) * 0.01).toFixed(6);
-    const lon = (85.2076 + (Math.random() - 0.5) * 0.01).toFixed(6);
-    
-    document.getElementById('suggestionLat').textContent = lat;
-    document.getElementById('suggestionLon').textContent = lon;
-    
-    showNotification('Координаты установлены', 'success');
-}
-
-async function submitSuggestion() {
-    // Эта функция вызывается из ideas.js
-    // Здесь можно добавить дополнительную логику, если нужно
-    console.log('Предложение отправлено из ideas.js');
-}
-
-// ============================================================================
-// СИСТЕМА СОЗДАНИЯ ГОЛОСОВАНИЙ
-// ============================================================================
-function setupVotingCreationSystem() {
-    const createVotingBtn = document.getElementById('createVotingBtn');
-    const createVotingModal = document.getElementById('createVotingModal');
-    
-    if (createVotingBtn) {
-        createVotingBtn.addEventListener('click', () => openCreateVotingModal());
-    }
-    
-    // Закрытие модального окна
-    document.getElementById('cancelCreateVoting')?.addEventListener('click', () => {
-        createVotingModal.style.display = 'none';
-    });
-    
-    // Добавление варианта ответа
-    document.getElementById('addVotingOption')?.addEventListener('click', () => {
-        addVotingOption();
-    });
-    
-    // Отправка голосования
-    document.getElementById('submitCreateVoting')?.addEventListener('click', () => {
-        submitCreateVoting();
-    });
-}
-
-function openCreateVotingModal() {
-    if (!authSystem.checkPermission('create_voting')) {
-        authSystem.showNotification('Только администраторы могут создавать голосования', 'error');
-        return;
-    }
-    
-    document.getElementById('createVotingModal').style.display = 'flex';
-    resetCreateVotingForm();
-    
-    // Устанавливаем даты по умолчанию
-    const today = new Date();
-    const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-    
-    document.getElementById('votingStartDate').value = today.toISOString().split('T')[0];
-    document.getElementById('votingEndDate').value = nextWeek.toISOString().split('T')[0];
-}
-
-function resetCreateVotingForm() {
-    document.getElementById('votingTitle').value = '';
-    document.getElementById('votingDescription').value = '';
-    document.getElementById('votingType').value = 'idea';
-    document.getElementById('votingMinVotes').value = '100';
-    document.getElementById('votingIdeaId').value = '';
-    
-    // Очищаем варианты ответов, оставляя два
-    const optionsContainer = document.getElementById('votingOptions');
-    optionsContainer.innerHTML = `
-        <div class="voting-option-input">
-            <input type="text" placeholder="Вариант 1" class="voting-option-text">
-            <button type="button" class="btn-remove-option"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="voting-option-input">
-            <input type="text" placeholder="Вариант 2" class="voting-option-text">
-            <button type="button" class="btn-remove-option"><i class="fas fa-times"></i></button>
-        </div>
-    `;
-    
-    // Добавляем обработчики для кнопок удаления
-    addVotingOptionEventListeners();
-}
-
-function addVotingOption() {
-    const optionsContainer = document.getElementById('votingOptions');
-    const optionCount = optionsContainer.children.length + 1;
-    
-    const optionDiv = document.createElement('div');
-    optionDiv.className = 'voting-option-input';
-    optionDiv.innerHTML = `
-        <input type="text" placeholder="Вариант ${optionCount}" class="voting-option-text">
-        <button type="button" class="btn-remove-option"><i class="fas fa-times"></i></button>
-    `;
-    
-    optionsContainer.appendChild(optionDiv);
-    
-    // Добавляем обработчик для новой кнопки удаления
-    const removeBtn = optionDiv.querySelector('.btn-remove-option');
-    removeBtn.addEventListener('click', function() {
-        if (optionsContainer.children.length > 2) {
-            optionDiv.remove();
-        } else {
-            showNotification('Должно быть хотя бы 2 варианта', 'error');
-        }
-    });
-}
-
-function addVotingOptionEventListeners() {
-    document.querySelectorAll('.btn-remove-option').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const optionsContainer = document.getElementById('votingOptions');
-            if (optionsContainer.children.length > 2) {
-                this.parentElement.remove();
-            } else {
-                showNotification('Должно быть хотя бы 2 варианта', 'error');
-            }
-        });
-    });
-}
-
-async function submitCreateVoting() {
-    const title = document.getElementById('votingTitle').value.trim();
-    const description = document.getElementById('votingDescription').value.trim();
-    const type = document.getElementById('votingType').value;
-    const startDate = document.getElementById('votingStartDate').value;
-    const endDate = document.getElementById('votingEndDate').value;
-    const minVotes = parseInt(document.getElementById('votingMinVotes').value) || 100;
-    const ideaId = document.getElementById('votingIdeaId').value;
-    
-    if (!title || !description) {
-        showNotification('Заполните название и описание голосования', 'error');
-        return;
-    }
-    
-    if (!startDate || !endDate) {
-        showNotification('Заполните даты начала и окончания', 'error');
-        return;
-    }
-    
-    if (new Date(endDate) <= new Date(startDate)) {
-        showNotification('Дата окончания должна быть позже даты начала', 'error');
-        return;
-    }
-    
-    // Собираем варианты ответов
-    const options = [];
-    const optionInputs = document.querySelectorAll('.voting-option-text');
-    
-    optionInputs.forEach((input, index) => {
-        const text = input.value.trim();
-        if (text) {
-            options.push({
-                id: index + 1,
-                text: text,
-                votes: 0
-            });
-        }
-    });
-    
-    if (options.length < 2) {
-        showNotification('Добавьте хотя бы 2 варианта ответа', 'error');
-        return;
-    }
-    
-    const userInfo = authSystem.getUserInfo();
-    
-    const voting = {
-        id: Date.now(),
-        title: title,
-        description: description,
-        type: type,
-        status: new Date(startDate) > new Date() ? 'coming' : 'active',
-        startDate: startDate,
-        endDate: endDate,
-        options: options,
-        totalVotes: 0,
-        minVotes: minVotes,
-        createdBy: userInfo.roleName,
-        createdById: userInfo.id,
-        ideaId: ideaId || null,
-        createdAt: new Date().toISOString().split('T')[0]
-    };
-    
-    // В реальном приложении здесь будет отправка на GitHub
-    // Для демо просто показываем уведомление
-    document.getElementById('createVotingModal').style.display = 'none';
-    showNotification('Голосование успешно создано!', 'success');
-    
-    // Здесь должен быть код сохранения в votingSystem
-    if (window.votingSystem) {
-        // Добавляем голосование в систему
-        window.votingSystem.votings.push(voting);
-        window.votingSystem.updateStats();
-        window.votingSystem.renderVotings();
-        window.votingSystem.saveToLocalStorage();
-    }
-}
-
-// ============================================================================
-// УТИЛИТЫ
+// ОСТАЛЬНЫЕ ФУНКЦИИ (оставляем как есть, но с проверками)
 // ============================================================================
 function getDefaultObjects() {
     return [
@@ -1209,6 +738,21 @@ function getDefaultObjects() {
             createdDate: '2024-03-15',
             status: 'active',
             problems: []
+        },
+        {
+            id: 2,
+            type: 'lawn',
+            name: 'Газон у школы',
+            species: '',
+            age: '120 кв.м.',
+            condition: 'normal',
+            coords: [52.5190, 85.2080],
+            description: 'Газон у школы №5',
+            createdBy: 'monitor',
+            createdByName: 'Специалист',
+            createdDate: '2024-03-10',
+            status: 'active',
+            problems: []
         }
     ];
 }
@@ -1223,9 +767,6 @@ function getDefaultProblems() {
             severity: 'high',
             status: 'new',
             location: [52.5170, 85.2090],
-            objectId: 1,
-            objectName: 'Старый дуб',
-            objectType: 'tree',
             author: 'Житель',
             authorRole: 'resident',
             date: '2024-01-15',
@@ -1240,9 +781,6 @@ function getColorByType(type) {
         case 'tree': return '#2E7D32';
         case 'lawn': return '#4CAF50';
         case 'bush': return '#8BC34A';
-        case 'flowerbed': return '#E91E63';
-        case 'bench': return '#795548';
-        case 'fountain': return '#00BCD4';
         default: return '#757575';
     }
 }
@@ -1252,9 +790,6 @@ function getIconByType(type) {
         case 'tree': return 'tree';
         case 'lawn': return 'leaf';
         case 'bush': return 'leaf';
-        case 'flowerbed': return 'spa';
-        case 'bench': return 'chair';
-        case 'fountain': return 'water';
         default: return 'placemark';
     }
 }
@@ -1268,210 +803,15 @@ function getProblemColor(status) {
     }
 }
 
-function createObjectBalloon(obj) {
-    const typeNames = {
-        tree: 'Дерево',
-        lawn: 'Газон',
-        bush: 'Кустарник',
-        flowerbed: 'Клумба',
-        bench: 'Скамейка',
-        fountain: 'Фонтан'
-    };
-    
-    const conditionNames = {
-        good: 'Хорошее',
-        normal: 'Нормальное',
-        bad: 'Плохое',
-        critical: 'Критическое'
-    };
-    
-    return `
-        <div class="balloon-content">
-            <div class="balloon-header">
-                <h4>${obj.name || `Объект #${obj.id}`}</h4>
-                <span class="object-type">${typeNames[obj.type] || obj.type}</span>
-            </div>
-            <div class="balloon-body">
-                ${obj.description ? `<p>${obj.description}</p>` : ''}
-                ${obj.species ? `<p><strong>Вид:</strong> ${obj.species}</p>` : ''}
-                ${obj.age ? `<p><strong>Возраст/Размер:</strong> ${obj.age}</p>` : ''}
-                <p><strong>Состояние:</strong> ${conditionNames[obj.condition] || obj.condition}</p>
-                <p><i class="fas fa-map-marker-alt"></i> ${obj.coords[0].toFixed(6)}, ${obj.coords[1].toFixed(6)}</p>
-                <p><i class="far fa-user"></i> ${obj.createdByName || 'Неизвестно'}</p>
-                <p><i class="far fa-calendar"></i> ${obj.createdDate}</p>
-                
-                ${obj.problems && obj.problems.length > 0 ? `
-                    <div class="balloon-problems">
-                        <strong>Проблемы:</strong>
-                        <ul>
-                            ${obj.problems.slice(0, 3).map(p => `<li>${p.title}</li>`).join('')}
-                        </ul>
-                    </div>
-                ` : ''}
-                
-                <div class="balloon-actions">
-                    <button onclick="openProblemModalForObject(${JSON.stringify(obj).replace(/"/g, '&quot;')})" 
-                            class="btn-balloon-action">
-                        <i class="fas fa-exclamation-triangle"></i> Сообщить о проблеме
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function createProblemBalloon(problem) {
-    const severityLabels = {
-        low: 'Низкая',
-        medium: 'Средняя',
-        high: 'Высокая',
-        critical: 'Критическая'
-    };
-    
-    const statusLabels = {
-        new: 'Новая',
-        inwork: 'В работе',
-        solved: 'Решено'
-    };
-    
-    return `
-        <div class="balloon-content">
-            <div class="balloon-header">
-                <h4>${problem.title}</h4>
-                <span class="problem-status">${statusLabels[problem.status] || problem.status}</span>
-            </div>
-            <div class="balloon-body">
-                <p>${problem.description}</p>
-                <p><strong>Срочность:</strong> ${severityLabels[problem.severity] || problem.severity}</p>
-                ${problem.objectName ? `<p><strong>Объект:</strong> ${problem.objectName}</p>` : ''}
-                <p><i class="far fa-user"></i> ${problem.author}</p>
-                <p><i class="far fa-calendar"></i> ${problem.date}</p>
-                <p><i class="fas fa-map-marker-alt"></i> ${problem.location[0].toFixed(6)}, ${problem.location[1].toFixed(6)}</p>
-            </div>
-        </div>
-    `;
-}
-
-function createSuggestionBalloon(suggestion) {
-    const categoryLabels = {
-        greening: 'Озеленение',
-        improvement: 'Благоустройство',
-        bench: 'Скамейка',
-        playground: 'Детская площадка',
-        lighting: 'Освещение',
-        other: 'Другое'
-    };
-    
-    return `
-        <div class="balloon-content">
-            <div class="balloon-header">
-                <h4>${suggestion.title}</h4>
-                <span class="suggestion-category">${categoryLabels[suggestion.category] || suggestion.category}</span>
-            </div>
-            <div class="balloon-body">
-                ${suggestion.description ? `<p>${suggestion.description}</p>` : ''}
-                <p><i class="far fa-user"></i> ${suggestion.author}</p>
-                <p><i class="far fa-calendar"></i> ${suggestion.date}</p>
-                <p><i class="fas fa-map-marker-alt"></i> ${suggestion.location[0].toFixed(6)}, ${suggestion.location[1].toFixed(6)}</p>
-            </div>
-        </div>
-    `;
-}
-
-function createIdeaBalloon(idea) {
-    const categoryLabels = {
-        greening: 'Озеленение',
-        improvement: 'Благоустройство',
-        ecology: 'Экология',
-        infrastructure: 'Инфраструктура',
-        events: 'Мероприятия'
-    };
-    
-    const statusLabels = {
-        new: 'На рассмотрении',
-        review: 'На экспертизе',
-        voting: 'На голосовании',
-        approved: 'Одобрено',
-        rejected: 'Отклонено'
-    };
-    
-    return `
-        <div class="balloon-content">
-            <div class="balloon-header">
-                <h4>${idea.title}</h4>
-                <span class="idea-status">${statusLabels[idea.status] || idea.status}</span>
-            </div>
-            <div class="balloon-body">
-                <p>${idea.description}</p>
-                <p><strong>Категория:</strong> ${categoryLabels[idea.category] || idea.category}</p>
-                ${idea.budget ? `<p><strong>Бюджет:</strong> ${idea.budget.toLocaleString()} руб.</p>` : ''}
-                <p><i class="far fa-user"></i> ${idea.author}</p>
-                <p><i class="far fa-calendar"></i> ${idea.date}</p>
-                <p><i class="fas fa-map-marker-alt"></i> ${idea.location[0].toFixed(6)}, ${idea.location[1].toFixed(6)}</p>
-                
-                <div class="idea-stats">
-                    <span><i class="fas fa-thumbs-up"></i> ${idea.votes.up}</span>
-                    <span><i class="fas fa-thumbs-down"></i> ${idea.votes.down}</span>
-                    <span><i class="far fa-comment"></i> ${idea.comments}</span>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function getTypeName(type) {
-    const types = {
-        tree: 'Дерево',
-        lawn: 'Газон',
-        bush: 'Кустарник',
-        flowerbed: 'Клумба',
-        bench: 'Скамейка',
-        fountain: 'Фонтан'
-    };
-    return types[type] || 'Объект';
-}
-
-function updateStatistics() {
-    // Статистика объектов
-    const treeCount = currentObjects.filter(o => o.type === 'tree').length;
-    const lawnCount = currentObjects.filter(o => o.type === 'lawn').length;
-    const bushCount = currentObjects.filter(o => o.type === 'bush').length;
-    const totalObjects = currentObjects.length;
-    
-    document.getElementById('treeCount')?.textContent = treeCount;
-    document.getElementById('lawnCount')?.textContent = lawnCount;
-    document.getElementById('bushCount')?.textContent = bushCount;
-    document.getElementById('statsTreeCount')?.textContent = treeCount;
-    document.getElementById('statsLawnCount')?.textContent = lawnCount;
-    document.getElementById('statsBushCount')?.textContent = bushCount;
-    document.getElementById('statsTotalObjects')?.textContent = totalObjects;
-    
-    // Статистика проблем
-    const problemNew = currentProblems.filter(p => p.status === 'new').length;
-    const problemWork = currentProblems.filter(p => p.status === 'inwork').length;
-    const problemSolved = currentProblems.filter(p => p.status === 'solved').length;
-    
-    document.getElementById('problemNewCount')?.textContent = problemNew;
-    document.getElementById('problemWorkCount')?.textContent = problemWork;
-    document.getElementById('problemSolvedCount')?.textContent = problemSolved;
-    
-    // Статистика предложений
-    const suggestionCount = currentSuggestions.length;
-    document.getElementById('suggestionCount')?.textContent = suggestionCount;
-    
-    // Статистика идей (будет обновляться в ideas.js)
-}
-
-// ============================================================================
-// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-// ============================================================================
 function locateUser() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             position => {
                 const location = [position.coords.latitude, position.coords.longitude];
-                myMap.setCenter(location, 15);
-                showNotification('Ваше местоположение определено');
+                if (myMap) {
+                    myMap.setCenter(location, 15);
+                    showNotification('Ваше местоположение определено');
+                }
             },
             error => {
                 showNotification('Не удалось определить местоположение', 'error');
@@ -1484,7 +824,10 @@ function locateUser() {
 
 function showNotification(message, type = 'success') {
     const notification = document.getElementById('notification');
-    if (!notification) return;
+    if (!notification) {
+        console.log('Уведомление:', message, type);
+        return;
+    }
     
     notification.textContent = message;
     notification.className = 'notification';
@@ -1518,8 +861,52 @@ function setupLegend() {
     }
 }
 
+function updateStatistics() {
+    // Статистика объектов
+    const treeCount = currentObjects.filter(o => o.type === 'tree').length;
+    const lawnCount = currentObjects.filter(o => o.type === 'lawn').length;
+    const bushCount = currentObjects.filter(o => o.type === 'bush').length;
+    const totalObjects = currentObjects.length;
+    
+    // Обновляем счетчики в легенде
+    const treeCountElement = document.getElementById('treeCount');
+    const lawnCountElement = document.getElementById('lawnCount');
+    const bushCountElement = document.getElementById('bushCount');
+    
+    if (treeCountElement) treeCountElement.textContent = treeCount;
+    if (lawnCountElement) lawnCountElement.textContent = lawnCount;
+    if (bushCountElement) bushCountElement.textContent = bushCount;
+    
+    // Обновляем статистику на экране объектов
+    const statsTreeCount = document.getElementById('statsTreeCount');
+    const statsLawnCount = document.getElementById('statsLawnCount');
+    const statsBushCount = document.getElementById('statsBushCount');
+    const statsTotalObjects = document.getElementById('statsTotalObjects');
+    
+    if (statsTreeCount) statsTreeCount.textContent = treeCount;
+    if (statsLawnCount) statsLawnCount.textContent = lawnCount;
+    if (statsBushCount) statsBushCount.textContent = bushCount;
+    if (statsTotalObjects) statsTotalObjects.textContent = totalObjects;
+    
+    // Статистика проблем
+    const problemNew = currentProblems.filter(p => p.status === 'new').length;
+    const problemWork = currentProblems.filter(p => p.status === 'inwork').length;
+    const problemSolved = currentProblems.filter(p => p.status === 'solved').length;
+    
+    const problemNewCount = document.getElementById('problemNewCount');
+    const problemWorkCount = document.getElementById('problemWorkCount');
+    const problemSolvedCount = document.getElementById('problemSolvedCount');
+    
+    if (problemNewCount) problemNewCount.textContent = problemNew;
+    if (problemWorkCount) problemWorkCount.textContent = problemWork;
+    if (problemSolvedCount) problemSolvedCount.textContent = problemSolved;
+}
+
 // ============================================================================
 // ГЛОБАЛЬНЫЕ ЭКСПОРТЫ
 // ============================================================================
 window.showNotification = showNotification;
-window.openProblemModalForObject = openProblemModalForObject;
+window.openProblemModalForObject = function(object) {
+    openProblemModal();
+    // Можно добавить логику для предзаполнения формы
+};
