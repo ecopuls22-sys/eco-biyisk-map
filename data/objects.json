@@ -1,20 +1,29 @@
 [
   {
     "id": 1,
+    "name": "Дуб у парка",
     "type": "tree",
-    "name": "Старый дуб",
-    "species": "Дуб обыкновенный",
-    "age": "50 лет",
     "condition": "good",
-    "coords": [52.5180, 85.2100],
-    "location": [52.5180, 85.2100],
-    "description": "Крупный дуб возрастом около 50 лет",
-    "createdBy": "monitor",
-    "createdByName": "Специалист",
-    "createdById": "specialist_001",
-    "createdDate": "2024-03-15",
-    "status": "active",
-    "problems": [],
-    "photos": []
+    "coords": [52.5186, 85.2076],
+    "description": "Крупный здоровый дуб",
+    "date": "2024-01-15"
+  },
+  {
+    "id": 2,
+    "name": "Газон у фонтана",
+    "type": "lawn",
+    "condition": "normal",
+    "coords": [52.5200, 85.2100],
+    "description": "Газон требует полива",
+    "date": "2024-01-16"
+  },
+  {
+    "id": 3,
+    "name": "Сирень у школы",
+    "type": "bush",
+    "condition": "good",
+    "coords": [52.5170, 85.2050],
+    "description": "Кусты сирени, цветут весной",
+    "date": "2024-01-17"
   }
 ]
