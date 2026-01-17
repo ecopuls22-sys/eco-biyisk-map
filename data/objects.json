@@ -1,0 +1,33 @@
+[
+  {
+    "id": 1,
+    "type": "tree",
+    "species": "Дуб обыкновенный",
+    "age": 15,
+    "health": "good",
+    "coords": [52.5186, 85.2076],
+    "address": "ул. Ленина, 45",
+    "plantedDate": "2010-05-15",
+    "responsible": "Городской парк",
+    "description": "Крупный дуб, требует регулярного ухода",
+    "createdBy": "admin",
+    "createdDate": "2024-01-15",
+    "photos": [],
+    "problems": []
+  },
+  {
+    "id": 2,
+    "type": "lawn",
+    "area": 120,
+    "condition": "normal",
+    "coords": [52.5190, 85.2080],
+    "address": "Сквер Победы",
+    "lastMaintenance": "2024-03-10",
+    "responsible": "ЖКХ-2",
+    "description": "Газон с декоративными растениями",
+    "createdBy": "specialist",
+    "createdDate": "2024-01-10",
+    "photos": [],
+    "problems": []
+  }
+]
