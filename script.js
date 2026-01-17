@@ -24,7 +24,6 @@ let currentObjects = [];
 let currentProblems = [];
 let currentSuggestions = [];
 let currentScreen = 'map';
-let selectedObjectForProblem = null;
 let isMapInitialized = false;
 
 // ============================================================================
@@ -33,15 +32,12 @@ let isMapInitialized = false;
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🌳 Умный город Бийск - Инициализация...');
     
-    // Инициализируем карту после загрузки Яндекс.Карт
     if (typeof ymaps !== 'undefined') {
         initMap();
     } else {
-        // Ждем загрузки Яндекс.Карт
         window.addEventListener('yandex-maps-loaded', initMap);
     }
     
-    // Инициализация интерфейса
     initializeUI();
 });
 
@@ -52,7 +48,6 @@ function initMap() {
         ymaps.ready(function() {
             console.log('✅ Яндекс.Карты загружены');
             
-            // Создаем карту
             myMap = new ymaps.Map('map', {
                 center: [52.5186, 85.2076],
                 zoom: 13,
@@ -61,7 +56,6 @@ function initMap() {
                 searchControlProvider: 'yandex#search'
             });
             
-            // Настройка элементов управления
             myMap.controls.get('zoomControl').options.set({
                 size: 'large',
                 position: { right: 10, top: 150 }
@@ -71,7 +65,6 @@ function initMap() {
                 position: { right: 10, top: 220 }
             });
             
-            // Добавляем поиск
             const searchControl = new ymaps.control.SearchControl({
                 options: {
                     provider: 'yandex#search',
@@ -84,7 +77,6 @@ function initMap() {
             isMapInitialized = true;
             console.log('✅ Карта создана');
             
-            // Загружаем данные
             loadAllData();
         });
     } catch (error) {
@@ -97,52 +89,31 @@ function initMap() {
 // ЗАГРУЗКА ДАННЫХ
 // ============================================================================
 async function loadAllData() {
-    console.log('📦 Загрузка данных...');
-    
     try {
         await Promise.all([
             loadObjects(),
             loadProblems(),
             loadSuggestions()
         ]);
-        
         updateStatistics();
-        console.log('✅ Данные загружены');
     } catch (error) {
         console.error('❌ Ошибка загрузки данных:', error);
-        showNotification('Ошибка загрузки данных', 'error');
     }
 }
 
 async function loadObjects() {
     try {
         const url = buildDataUrl(CONFIG.DATA_FILES.objects);
-        console.log('Загрузка объектов:', url);
-        
         const response = await fetch(url);
-        
         if (response.ok) {
             currentObjects = await response.json();
-            console.log(`Загружено объектов: ${currentObjects.length}`);
-            
-            if (isMapInitialized) {
-                renderObjectsOnMap();
-            }
         } else {
-            console.warn('Не удалось загрузить объекты, используем демо-данные');
             currentObjects = getDefaultObjects();
-            
-            if (isMapInitialized) {
-                renderObjectsOnMap();
-            }
         }
+        if (isMapInitialized) renderObjectsOnMap();
     } catch (error) {
-        console.error('Ошибка загрузки объектов:', error);
         currentObjects = getDefaultObjects();
-        
-        if (isMapInitialized) {
-            renderObjectsOnMap();
-        }
+        if (isMapInitialized) renderObjectsOnMap();
     }
 }
 
@@ -150,28 +121,15 @@ async function loadProblems() {
     try {
         const url = buildDataUrl(CONFIG.DATA_FILES.problems);
         const response = await fetch(url);
-        
         if (response.ok) {
             currentProblems = await response.json();
-            console.log(`Загружено проблем: ${currentProblems.length}`);
-            
-            if (isMapInitialized) {
-                renderProblemsOnMap();
-            }
         } else {
             currentProblems = getDefaultProblems();
-            
-            if (isMapInitialized) {
-                renderProblemsOnMap();
-            }
         }
+        if (isMapInitialized) renderProblemsOnMap();
     } catch (error) {
-        console.error('Ошибка загрузки проблем:', error);
         currentProblems = getDefaultProblems();
-        
-        if (isMapInitialized) {
-            renderProblemsOnMap();
-        }
+        if (isMapInitialized) renderProblemsOnMap();
     }
 }
 
@@ -179,17 +137,11 @@ async function loadSuggestions() {
     try {
         const url = buildDataUrl(CONFIG.DATA_FILES.suggestions);
         const response = await fetch(url);
-        
         if (response.ok) {
             currentSuggestions = await response.json();
-            console.log(`Загружено предложений: ${currentSuggestions.length}`);
-            
-            if (isMapInitialized) {
-                renderSuggestionsOnMap();
-            }
         }
+        if (isMapInitialized) renderSuggestionsOnMap();
     } catch (error) {
-        console.error('Ошибка загрузки предложений:', error);
         currentSuggestions = [];
     }
 }
@@ -197,72 +149,20 @@ async function loadSuggestions() {
 function buildDataUrl(filePath) {
     return `https://raw.githubusercontent.com/${CONFIG.GITHUB_USERNAME}/${CONFIG.REPO_NAME}/main/${filePath}?t=${Date.now()}`;
 }
-
 // ============================================================================
 // РАБОТА С КАРТОЙ
 // ============================================================================
 function renderObjectsOnMap() {
-    if (!myMap || !isMapInitialized) {
-        console.warn('Карта не инициализирована, откладываем рендеринг объектов');
-        return;
-    }
-    
-    console.log('🎯 Рендеринг объектов на карте...');
-    
-    try {
-        // Очищаем старые объекты
-        const objectPlacemarks = myMap.geoObjects.filter(geoObject => 
-            geoObject.properties && geoObject.properties.get('objectType') === 'object'
-        );
-        myMap.geoObjects.remove(objectPlacemarks);
-        
-        // Добавляем объекты
-        currentObjects.forEach(obj => {
-            addObjectToMap(obj);
-        });
-        
-        console.log(`✅ На карту добавлено объектов: ${currentObjects.length}`);
-    } catch (error) {
-        console.error('❌ Ошибка рендеринга объектов:', error);
-    }
+    if (!myMap || !isMapInitialized) return;
+    currentObjects.forEach(obj => addObjectToMap(obj));
 }
-
 function renderProblemsOnMap() {
     if (!myMap || !isMapInitialized) return;
-    
-    try {
-        // Очищаем старые проблемы
-        const problemPlacemarks = myMap.geoObjects.filter(geoObject => 
-            geoObject.properties && geoObject.properties.get('objectType') === 'problem'
-        );
-        myMap.geoObjects.remove(problemPlacemarks);
-        
-        // Добавляем проблемы
-        currentProblems.forEach(problem => {
-            addProblemToMap(problem);
-        });
-    } catch (error) {
-        console.error('Ошибка рендеринга проблем:', error);
-    }
+    currentProblems.forEach(problem => addProblemToMap(problem));
 }
-
 function renderSuggestionsOnMap() {
     if (!myMap || !isMapInitialized) return;
-    
-    try {
-        // Очищаем старые предложения
-        const suggestionPlacemarks = myMap.geoObjects.filter(geoObject => 
-            geoObject.properties && geoObject.properties.get('objectType') === 'suggestion'
-        );
-        myMap.geoObjects.remove(suggestionPlacemarks);
-        
-        // Добавляем предложения
-        currentSuggestions.forEach(suggestion => {
-            addSuggestionToMap(suggestion);
-        });
-    } catch (error) {
-        console.error('Ошибка рендеринга предложений:', error);
-    }
+    currentSuggestions.forEach(suggestion => addSuggestionToMap(suggestion));
 }
 
 function addObjectToMap(obj) {
@@ -337,33 +237,35 @@ function addSuggestionToMap(suggestion) {
     }
 }
 
-// Экспортируем функцию для использования в других файлах
-window.addSuggestionToMap = addSuggestionToMap;
-
-function addIdeaToMap(idea) {
-    if (!myMap || !isMapInitialized) return;
-    
-    try {
-        const placemark = new ymaps.Placemark(idea.location, {
-            balloonContent: createIdeaBalloon(idea),
-            hintContent: idea.title,
-            objectType: 'idea',
-            ideaId: idea.id,
-            ideaData: idea
-        }, {
-            preset: 'islands#circleIcon',
-            iconColor: '#FFC107',
-            iconGlyph: 'lightbulb'
-        });
-        
-        myMap.geoObjects.add(placemark);
-    } catch (error) {
-        console.error('Ошибка добавления идеи на карту:', error);
-    }
+function getDefaultObjects() {
+    return [
+        {
+            id: 1,
+            type: 'tree',
+            name: 'Старый дуб',
+            species: 'Дуб обыкновенный',
+            age: '50 лет',
+            condition: 'good',
+            coords: [52.5180, 85.2100],
+            description: 'Крупный дуб возрастом около 50 лет'
+        }
+        // ... другие объекты
+    ];
 }
 
-// Экспортируем функцию для использования в других файлах
-window.addIdeaToMap = addIdeaToMap;
+function getDefaultProblems() {
+    return [
+        {
+            id: 1,
+            title: 'Засохло дерево у школы',
+            type: 'tree_problem',
+            description: 'Дерево полностью засохло',
+            severity: 'high',
+            status: 'new',
+            location: [52.5170, 85.2090]
+        }
+    ];
+}
 
 // ============================================================================
 // ИНТЕРФЕЙС - ФИКС ОСНОВНОЙ ПРОБЛЕМЫ С НАВИГАЦИЕЙ
@@ -1174,5 +1076,6 @@ window.openProblemModalForObject = function(object) {
 // В конец script.js
 window.openSidebar = openSidebar;
 window.closeSidebar = closeSidebar;
+
 
 
