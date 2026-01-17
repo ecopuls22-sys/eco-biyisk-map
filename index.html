@@ -35,24 +35,21 @@
         <div class="header__actions">
             <!-- Информация о режиме -->
             <div class="mode-info" id="modeInfo">
-                <span class="mode-badge" id="currentMode">Гость</span>
+                <span class="mode-badge" id="currentMode">Житель</span>
             </div>
             
             <!-- Меню пользователя -->
             <div class="user-menu" id="userMenu">
-                <span class="user-name" id="userName">Гость</span>
+                <span class="user-name" id="userName">Житель</span>
                 <div class="user-avatar">
                     <i class="fas fa-user"></i>
                 </div>
                 <div class="user-dropdown" id="userDropdown">
-                    <div class="dropdown-item" data-role="guest">
-                        <i class="fas fa-user"></i> Гость (только просмотр)
-                    </div>
                     <div class="dropdown-item" data-role="resident">
                         <i class="fas fa-home"></i> Житель
                     </div>
                     <div class="dropdown-item" data-role="monitor">
-                        <i class="fas fa-binoculars"></i> Народный мониторинг
+                        <i class="fas fa-tools"></i> Специалист
                     </div>
                     <div class="dropdown-item" data-role="admin">
                         <i class="fas fa-user-tie"></i> Администратор
@@ -85,7 +82,7 @@
             
             <div class="legend__body" id="legendBody">
                 <div class="legend__category">
-                    <h5><i class="fas fa-tree"></i> Растительность:</h5>
+                    <h5><i class="fas fa-tree"></i> Объекты:</h5>
                     <div class="legend__items">
                         <div class="legend__item" data-type="tree">
                             <div class="legend__color" style="background-color: #2E7D32;"></div>
@@ -125,16 +122,44 @@
                         </div>
                     </div>
                 </div>
+                
+                <div class="legend__category">
+                    <h5><i class="fas fa-lightbulb"></i> Предложения:</h5>
+                    <div class="legend__items">
+                        <div class="legend__item" data-type="suggestion">
+                            <div class="legend__color" style="background-color: #9C27B0;"></div>
+                            <span>Предложения</span>
+                            <span class="legend__count" id="suggestionCount">0</span>
+                        </div>
+                        <div class="legend__item" data-type="idea">
+                            <div class="legend__color" style="background-color: #FFC107;"></div>
+                            <span>Идеи</span>
+                            <span class="legend__count" id="ideaCount">0</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <!-- Кнопка добавления проблемы (только для мониторинга) -->
+        <!-- Кнопка добавления объекта (только специалист и админ) -->
+        <button class="add-object-btn" id="addObjectBtn" title="Добавить объект">
+            <i class="fas fa-plus-circle"></i>
+            <span>Объект</span>
+        </button>
+        
+        <!-- Кнопка добавления проблемы -->
         <button class="add-problem-btn" id="addProblemBtn" title="Сообщить о проблеме">
             <i class="fas fa-exclamation-circle"></i>
             <span>Проблема</span>
         </button>
         
-        <!-- Кнопка добавления идеи (только для жителей) -->
+        <!-- Кнопка добавления предложения -->
+        <button class="add-suggestion-btn" id="addSuggestionBtn" title="Добавить предложение">
+            <i class="fas fa-map-marker-alt"></i>
+            <span>Предложение</span>
+        </button>
+        
+        <!-- Кнопка добавления идеи -->
         <button class="add-idea-btn" id="addIdeaBtn" title="Предложить идею">
             <i class="fas fa-lightbulb"></i>
             <span>Идея</span>
@@ -150,6 +175,11 @@
     <div class="screen screen--objects" id="screenObjects">
         <div class="screen__header">
             <h2><i class="fas fa-list"></i> Объекты на карте</h2>
+            <div class="screen__actions">
+                <button class="btn btn--primary" id="addObjectFromListBtn">
+                    <i class="fas fa-plus"></i> Добавить объект
+                </button>
+            </div>
         </div>
         <div class="screen__content">
             <div class="objects-stats">
@@ -165,6 +195,16 @@
                     <i class="fas fa-leaf"></i>
                     <span>Кустарники: <strong id="statsBushCount">0</strong></span>
                 </div>
+                <div class="stat-item">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Всего: <strong id="statsTotalObjects">0</strong></span>
+                </div>
+            </div>
+            <div class="objects-filters">
+                <button class="filter-btn active" data-filter="all">Все</button>
+                <button class="filter-btn" data-filter="tree">Деревья</button>
+                <button class="filter-btn" data-filter="lawn">Газоны</button>
+                <button class="filter-btn" data-filter="bush">Кустарники</button>
             </div>
             <div class="objects-list" id="objectsList">
                 <!-- Объекты загружаются через JS -->
@@ -183,11 +223,31 @@
             </div>
         </div>
         <div class="screen__content">
+            <div class="problems-stats">
+                <div class="stat-card">
+                    <div class="stat-card__value" id="problemsTotal">0</div>
+                    <div class="stat-card__label">Всего проблем</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card__value" id="problemsNew">0</div>
+                    <div class="stat-card__label">Новые</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card__value" id="problemsInWork">0</div>
+                    <div class="stat-card__label">В работе</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card__value" id="problemsSolved">0</div>
+                    <div class="stat-card__label">Решено</div>
+                </div>
+            </div>
+            
             <div class="problems-filters">
                 <button class="filter-btn active" data-filter="all">Все</button>
                 <button class="filter-btn" data-filter="new">Новые</button>
                 <button class="filter-btn" data-filter="inwork">В работе</button>
                 <button class="filter-btn" data-filter="solved">Решено</button>
+                <button class="filter-btn" data-filter="my">Мои проблемы</button>
             </div>
             <div class="problems-list" id="problemsList">
                 <!-- Проблемы загружаются через JS -->
@@ -242,6 +302,11 @@
     <div class="screen screen--voting" id="screenVoting">
         <div class="screen__header">
             <h2><i class="fas fa-vote-yea"></i> Приоритетные голосования</h2>
+            <div class="screen__actions">
+                <button class="btn btn--primary" id="createVotingBtn">
+                    <i class="fas fa-plus"></i> Создать голосование
+                </button>
+            </div>
         </div>
         <div class="screen__content">
             <div class="voting-stats">
@@ -284,42 +349,31 @@
         <p>Выберите режим работы с системой:</p>
         
         <div class="role-options">
-            <div class="role-option" data-role="guest">
-                <div class="role-icon">
-                    <i class="fas fa-user"></i>
-                </div>
-                <h4>Гость</h4>
-                <p>Только просмотр карты и голосований</p>
-                <ul class="role-features">
-                    <li>👁️ Просмотр объектов</li>
-                    <li>🗺️ Использование карты</li>
-                    <li>📊 Просмотр статистики</li>
-                </ul>
-            </div>
-            
             <div class="role-option" data-role="resident">
                 <div class="role-icon">
                     <i class="fas fa-home"></i>
                 </div>
                 <h4>Житель</h4>
-                <p>Может предлагать идеи и голосовать</p>
+                <p>Может предлагать идеи, голосовать и сообщать о проблемах</p>
                 <ul class="role-features">
                     <li>💡 Предлагать идеи (3 в месяц)</li>
+                    <li>⚠️ Сообщать о проблемах</li>
                     <li>🗳️ Участвовать в голосованиях</li>
-                    <li>📝 Комментировать</li>
+                    <li>📍 Ставить точки с предложениями</li>
                 </ul>
             </div>
             
             <div class="role-option" data-role="monitor">
                 <div class="role-icon">
-                    <i class="fas fa-binoculars"></i>
+                    <i class="fas fa-tools"></i>
                 </div>
-                <h4>Народный мониторинг</h4>
-                <p>Фиксирует проблемы на карте</p>
+                <h4>Специалист по благоустройству</h4>
+                <p>Добавляет объекты (деревья, газоны, кустарники) на карту</p>
                 <ul class="role-features">
+                    <li>🌳 Добавлять деревья, газоны, кустарники</li>
+                    <li>📝 Редактировать информацию об объектах</li>
                     <li>⚠️ Сообщать о проблемах</li>
-                    <li>📍 Отмечать на карте</li>
-                    <li>📸 Прикреплять фото</li>
+                    <li>💡 Предлагать идеи (5 в месяц)</li>
                 </ul>
             </div>
             
@@ -327,17 +381,90 @@
                 <div class="role-icon">
                     <i class="fas fa-user-tie"></i>
                 </div>
-                <h4>Администратор</h4>
-                <p>Полный доступ к управлению</p>
+                <h4>Администрация</h4>
+                <p>Полный доступ к управлению системой</p>
                 <ul class="role-features">
                     <li>⚙️ Создавать голосования</li>
-                    <li>✅ Модерировать идеи</li>
-                    <li>📈 Управлять объектами</li>
+                    <li>✅ Модерировать идеи и проблемы</li>
+                    <li>🗑️ Удалять объекты</li>
+                    <li>🌳 Добавлять любые объекты</li>
+                    <li>📊 Управлять всеми данными</li>
                 </ul>
             </div>
         </div>
         
         <button class="btn btn--secondary" id="closeRoleModal">Отмена</button>
+    </div>
+</div>
+
+<!-- Модальное окно добавления объекта -->
+<div class="modal" id="objectModal">
+    <div class="modal__content">
+        <h3><i class="fas fa-plus-circle"></i> Добавить объект</h3>
+        
+        <div class="form-group">
+            <label for="objectType">Тип объекта:</label>
+            <select id="objectType">
+                <option value="tree">Дерево</option>
+                <option value="lawn">Газон</option>
+                <option value="bush">Кустарник</option>
+                <option value="flowerbed">Клумба</option>
+                <option value="bench">Скамейка</option>
+                <option value="fountain">Фонтан</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="objectName">Название:</label>
+            <input type="text" id="objectName" placeholder="Например: Дуб у школы №5">
+        </div>
+        
+        <div class="form-group">
+            <label for="objectDescription">Описание:</label>
+            <textarea id="objectDescription" rows="3" placeholder="Опишите объект..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Местоположение:</label>
+            <div class="coordinates-display">
+                <div class="coord">
+                    <span>Широта:</span>
+                    <span id="objectLat">52.518600</span>
+                </div>
+                <div class="coord">
+                    <span>Долгота:</span>
+                    <span id="objectLon">85.207600</span>
+                </div>
+            </div>
+            <button class="btn btn--small" id="selectObjectLocation">
+                <i class="fas fa-map-marker-alt"></i> Выбрать на карте
+            </button>
+        </div>
+        
+        <div class="form-group">
+            <label for="objectSpecies">Вид/Порода (для деревьев/кустарников):</label>
+            <input type="text" id="objectSpecies" placeholder="Например: Дуб обыкновенный">
+        </div>
+        
+        <div class="form-group">
+            <label for="objectAge">Возраст/Размер:</label>
+            <input type="text" id="objectAge" placeholder="Например: 15 лет или 120 кв.м.">
+        </div>
+        
+        <div class="form-group">
+            <label for="objectCondition">Состояние:</label>
+            <select id="objectCondition">
+                <option value="good">Хорошее</option>
+                <option value="normal">Нормальное</option>
+                <option value="bad">Плохое</option>
+                <option value="critical">Критическое</option>
+            </select>
+        </div>
+        
+        <div class="form-actions">
+            <button class="btn btn--secondary" id="cancelObject">Отмена</button>
+            <button class="btn btn--primary" id="submitObject">Добавить объект</button>
+        </div>
     </div>
 </div>
 
@@ -354,11 +481,11 @@
         <div class="form-group">
             <label for="problemType">Тип проблемы:</label>
             <select id="problemType">
-                <option value="tree">Дерево (засохло, сломано)</option>
-                <option value="lawn">Газон (вытоптан, пожелтел)</option>
-                <option value="bush">Кустарник (сломан, болен)</option>
-                <option value="fence">Ограда (сломана)</option>
-                <option value="garbage">Мусор</option>
+                <option value="tree_problem">Проблема с деревом</option>
+                <option value="lawn_problem">Проблема с газоном</option>
+                <option value="bush_problem">Проблема с кустарником</option>
+                <option value="trash">Мусор</option>
+                <option value="damage">Повреждение</option>
                 <option value="other">Другое</option>
             </select>
         </div>
@@ -366,6 +493,14 @@
         <div class="form-group">
             <label for="problemDescription">Описание:</label>
             <textarea id="problemDescription" rows="3" placeholder="Опишите проблему подробно..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="problemObject">Объект (если есть):</label>
+            <select id="problemObject">
+                <option value="">Выберите объект</option>
+                <!-- Список объектов будет заполняться через JS -->
+            </select>
         </div>
         
         <div class="form-group">
@@ -386,8 +521,22 @@
         </div>
         
         <div class="form-group">
+            <label for="problemSeverity">Срочность:</label>
+            <select id="problemSeverity">
+                <option value="low">Низкая</option>
+                <option value="medium">Средняя</option>
+                <option value="high">Высокая</option>
+                <option value="critical">Критическая</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
             <label for="problemPhoto">Фотография (необязательно):</label>
             <input type="file" id="problemPhoto" accept="image/*">
+        </div>
+        
+        <div class="problem-limits" id="problemLimits">
+            <p><i class="fas fa-info-circle"></i> У вас осталось <span id="problemsLeft">5</span> сообщений о проблемах сегодня</p>
         </div>
         
         <div class="form-actions">
@@ -452,6 +601,129 @@
         <div class="form-actions">
             <button class="btn btn--secondary" id="cancelIdea">Отмена</button>
             <button class="btn btn--primary" id="submitIdea">Предложить идею</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно предложения (точки на карте) -->
+<div class="modal" id="suggestionModal">
+    <div class="modal__content">
+        <h3><i class="fas fa-map-marker-alt"></i> Добавить предложение на карту</h3>
+        
+        <div class="form-group">
+            <label for="suggestionTitle">Название предложения:</label>
+            <input type="text" id="suggestionTitle" placeholder="Например: Место для нового фонтана">
+        </div>
+        
+        <div class="form-group">
+            <label for="suggestionCategory">Категория:</label>
+            <select id="suggestionCategory">
+                <option value="greening">Озеленение</option>
+                <option value="improvement">Благоустройство</option>
+                <option value="bench">Скамейка</option>
+                <option value="playground">Детская площадка</option>
+                <option value="lighting">Освещение</option>
+                <option value="other">Другое</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="suggestionDescription">Описание:</label>
+            <textarea id="suggestionDescription" rows="3" placeholder="Опишите ваше предложение..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Местоположение:</label>
+            <div class="coordinates-display">
+                <div class="coord">
+                    <span>Широта:</span>
+                    <span id="suggestionLat">52.518600</span>
+                </div>
+                <div class="coord">
+                    <span>Долгота:</span>
+                    <span id="suggestionLon">85.207600</span>
+                </div>
+            </div>
+            <button class="btn btn--small" id="selectSuggestionLocation">
+                <i class="fas fa-map-marker-alt"></i> Выбрать на карте
+            </button>
+        </div>
+        
+        <div class="form-actions">
+            <button class="btn btn--secondary" id="cancelSuggestion">Отмена</button>
+            <button class="btn btn--primary" id="submitSuggestion">Добавить предложение</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно создания голосования (только для админа) -->
+<div class="modal" id="createVotingModal">
+    <div class="modal__content">
+        <h3><i class="fas fa-vote-yea"></i> Создать новое голосование</h3>
+        
+        <div class="form-group">
+            <label for="votingTitle">Название голосования:</label>
+            <input type="text" id="votingTitle" placeholder="Например: Выбор места для нового сквера">
+        </div>
+        
+        <div class="form-group">
+            <label for="votingDescription">Описание:</label>
+            <textarea id="votingDescription" rows="3" placeholder="Опишите, о чём это голосование..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="votingType">Тип голосования:</label>
+            <select id="votingType">
+                <option value="idea">По выбору идеи</option>
+                <option value="location">По выбору местоположения</option>
+                <option value="priority">По приоритету проекта</option>
+                <option value="other">Другое</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="votingStartDate">Дата начала:</label>
+            <input type="date" id="votingStartDate">
+        </div>
+        
+        <div class="form-group">
+            <label for="votingEndDate">Дата окончания:</label>
+            <input type="date" id="votingEndDate">
+        </div>
+        
+        <div class="form-group">
+            <label for="votingMinVotes">Минимальное количество голосов:</label>
+            <input type="number" id="votingMinVotes" placeholder="100" min="1" value="100">
+        </div>
+        
+        <div class="form-group">
+            <label>Варианты ответов:</label>
+            <div id="votingOptions">
+                <div class="voting-option-input">
+                    <input type="text" placeholder="Вариант 1" class="voting-option-text">
+                    <button type="button" class="btn-remove-option"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="voting-option-input">
+                    <input type="text" placeholder="Вариант 2" class="voting-option-text">
+                    <button type="button" class="btn-remove-option"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <button type="button" class="btn btn--small" id="addVotingOption">
+                <i class="fas fa-plus"></i> Добавить вариант
+            </button>
+        </div>
+        
+        <div class="form-group">
+            <label for="votingIdeaId">Привязать к идее (необязательно):</label>
+            <select id="votingIdeaId">
+                <option value="">Не привязывать</option>
+                <!-- Список идей будет заполняться через JS -->
+            </select>
+        </div>
+        
+        <div class="form-actions">
+            <button class="btn btn--secondary" id="cancelCreateVoting">Отмена</button>
+            <button class="btn btn--primary" id="submitCreateVoting">Создать голосование</button>
         </div>
     </div>
 </div>
