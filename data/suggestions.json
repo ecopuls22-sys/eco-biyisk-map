@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "title": "Место для новой скамейки",
+    "category": "bench",
+    "description": "Здесь красивые виды, было бы здорово поставить скамейку для отдыха",
+    "author": "Житель",
+    "authorRole": "resident",
+    "authorId": "user_67890",
+    "location": [52.5195, 85.2095],
+    "date": "2024-01-18",
+    "status": "pending",
+    "votes": 3,
+    "comments": []
+  }
+]
