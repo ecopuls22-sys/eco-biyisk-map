@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "objectId": 1,
+    "type": "tree_problem",
+    "title": "Сломанная ветка",
+    "description": "Большая ветка сломана после шторма, висит и может упасть",
+    "severity": "medium",
+    "status": "new",
+    "coords": [52.5186, 85.2076],
+    "author": "resident_12345",
+    "authorRole": "resident",
+    "date": "2024-01-20",
+    "photos": [],
+    "votes": 5,
+    "comments": []
+  }
+]
