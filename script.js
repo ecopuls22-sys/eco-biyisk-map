@@ -1171,5 +1171,8 @@ window.openProblemModalForObject = function(object) {
     openProblemModal();
     // Можно добавить логику для предзаполнения формы
 };
+// В конец script.js
+window.openSidebar = openSidebar;
+window.closeSidebar = closeSidebar;
 
 
