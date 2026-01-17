@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Экологическая карта Бийска - Умный город</title>
-    <script src="https://api-maps.yandex.ru/2.1/?apikey=3dcd9dd7-c0b7-4ca6-b3d7-93a7141fc60a&lang=ru_RU" type="text/javascript"></script>
-    <link rel="stylesheet" href="style.css">
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=3dcd9dd7-c0b7-4ca6-b3d7-93a7141fc60a&lang=ru_RU&load=package.full" type="text/javascript"></script>    <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -736,6 +735,22 @@
 <script src="voting.js"></script>
 <script src="ideas.js"></script>
 <script src="script.js"></script>
+<script>
+    // Проверяем загрузку Яндекс.Карт
+    function checkYmapsLoaded() {
+        if (typeof ymaps !== 'undefined') {
+            console.log('✅ Яндекс.Карты загружены');
+            window.dispatchEvent(new Event('yandex-maps-loaded'));
+        } else {
+            console.warn('⚠ Яндекс.Карты еще не загружены');
+            setTimeout(checkYmapsLoaded, 500);
+        }
+    }
+    
+    // Запускаем проверку
+    setTimeout(checkYmapsLoaded, 1000);
+</script>
 </body>
 </html>
+
 
