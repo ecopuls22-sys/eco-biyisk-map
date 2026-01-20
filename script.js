@@ -330,6 +330,11 @@ function initializeUI() {
             }
         });
     }
+
+    const headerLogoutBtn = document.getElementById('headerLogoutBtn');
+    if (headerLogoutBtn) {
+        headerLogoutBtn.addEventListener('click', logoutUser);
+    }
 }
 
 // ============================================================================
@@ -354,8 +359,8 @@ function showPanel(panelState, data = null) {
             break;
             
         case PANEL_STATES.LOGIN:
-            panelTitle.innerHTML = '<i class="fas fa-sign-in-alt"></i> Вход в систему';
-            loadLoginPanel();
+            panelTitle.innerHTML = '<i class="fas fa-sign-in-alt"></i> Смена роли';
+            loadLoginPanel(data || ROLES.USER);
             break;
             
         case PANEL_STATES.USER_DASHBOARD:
@@ -433,6 +438,9 @@ function loadDefaultPanel() {
                 <button class="panel-menu-btn" id="userPollsBtn">
                     <i class="fas fa-poll"></i> Голосования
                 </button>
+                <button class="panel-menu-btn" id="userSwitchRoleBtn">
+                    <i class="fas fa-exchange-alt"></i> Сменить роль
+                </button>
                 <button class="panel-menu-btn" id="userLogoutBtn">
                     <i class="fas fa-sign-out-alt"></i> Выйти
                 </button>
@@ -447,6 +455,9 @@ function loadDefaultPanel() {
                 </button>
                 <button class="panel-menu-btn" id="specAddObjectBtn">
                     <i class="fas fa-plus-circle"></i> Добавить объект
+                </button>
+                <button class="panel-menu-btn" id="specSwitchRoleBtn">
+                    <i class="fas fa-exchange-alt"></i> Сменить роль
                 </button>
                 <button class="panel-menu-btn" id="specLogoutBtn">
                     <i class="fas fa-sign-out-alt"></i> Выйти
@@ -467,6 +478,9 @@ function loadDefaultPanel() {
                 </button>
                 <button class="panel-menu-btn" id="adminStatsBtn">
                     <i class="fas fa-chart-bar"></i> Статистика
+                </button>
+                <button class="panel-menu-btn" id="adminSwitchRoleBtn">
+                    <i class="fas fa-exchange-alt"></i> Сменить роль
                 </button>
                 <button class="panel-menu-btn" id="adminLogoutBtn">
                     <i class="fas fa-sign-out-alt"></i> Выйти
@@ -495,7 +509,7 @@ function loadDefaultPanel() {
     initializePanelButtons();
 }
 
-function loadLoginPanel() {
+function loadLoginPanel(selectedRole = ROLES.USER) {
     const panelContent = document.getElementById('panelContent');
     
     const content = `
@@ -511,9 +525,9 @@ function loadLoginPanel() {
             </div>
             
             <div class="form-group">
-                <label>Выберите тип входа:</label>
+                <label>Выберите роль:</label>
                 <div class="login-type-selector">
-                    <button class="login-type-btn active" data-role="user">
+                    <button class="login-type-btn" data-role="user">
                         <i class="fas fa-user"></i> Пользователь
                     </button>
                     <button class="login-type-btn" data-role="specialist">
@@ -525,14 +539,9 @@ function loadLoginPanel() {
                 </div>
             </div>
             
-            <div class="form-group" id="passwordGroup" style="display: none;">
-                <label for="loginPassword">Пароль:</label>
-                <input type="password" id="loginPassword" class="form-input" placeholder="Введите пароль">
-            </div>
-            
             <div class="form-actions">
                 <button class="btn btn--secondary" id="cancelLogin">Отмена</button>
-                <button class="btn btn--primary" id="submitLogin">Войти</button>
+                <button class="btn btn--primary" id="submitLogin">Сменить роль</button>
             </div>
             
             <div class="login-hint">
@@ -544,21 +553,29 @@ function loadLoginPanel() {
     `;
     
     panelContent.innerHTML = content;
+
+    const loginEmailInput = document.getElementById('loginEmail');
+    const loginNameInput = document.getElementById('loginName');
+    if (currentUser.role !== ROLES.GUEST) {
+        if (loginEmailInput) loginEmailInput.value = currentUser.email || '';
+        if (loginNameInput) loginNameInput.value = currentUser.name || '';
+    }
     
     // Обработчики для формы входа
     document.querySelectorAll('.login-type-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.login-type-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
-            
-            const passwordGroup = document.getElementById('passwordGroup');
-            if (this.dataset.role === 'user') {
-                passwordGroup.style.display = 'none';
-            } else {
-                passwordGroup.style.display = 'block';
-            }
         });
     });
+
+    const initialBtn = document.querySelector(`.login-type-btn[data-role="${selectedRole}"]`);
+    if (initialBtn) {
+        initialBtn.classList.add('active');
+    } else {
+        const fallbackBtn = document.querySelector('.login-type-btn[data-role="user"]');
+        if (fallbackBtn) fallbackBtn.classList.add('active');
+    }
     
     document.getElementById('cancelLogin').addEventListener('click', () => {
         showPanel(PANEL_STATES.DEFAULT);
@@ -787,28 +804,32 @@ function initializePanelButtons() {
     const guestSpecialistBtn = document.getElementById('guestSpecialistBtn');
     const guestAdminBtn = document.getElementById('guestAdminBtn');
     
-    if (guestLoginBtn) guestLoginBtn.addEventListener('click', () => showPanel(PANEL_STATES.LOGIN));
-    if (guestSpecialistBtn) guestSpecialistBtn.addEventListener('click', handleSpecialistLogin);
-    if (guestAdminBtn) guestAdminBtn.addEventListener('click', handleAdminLogin);
+    if (guestLoginBtn) guestLoginBtn.addEventListener('click', () => showPanel(PANEL_STATES.LOGIN, ROLES.USER));
+    if (guestSpecialistBtn) guestSpecialistBtn.addEventListener('click', () => showPanel(PANEL_STATES.LOGIN, ROLES.SPECIALIST));
+    if (guestAdminBtn) guestAdminBtn.addEventListener('click', () => showPanel(PANEL_STATES.LOGIN, ROLES.ADMIN));
     
     // Кнопки для пользователя
     const userSuggestBtn = document.getElementById('userSuggestBtn');
     const userIssuesBtn = document.getElementById('userIssuesBtn');
     const userPollsBtn = document.getElementById('userPollsBtn');
+    const userSwitchRoleBtn = document.getElementById('userSwitchRoleBtn');
     const userLogoutBtn = document.getElementById('userLogoutBtn');
     
     if (userSuggestBtn) userSuggestBtn.addEventListener('click', startSuggestionMode);
     if (userIssuesBtn) userIssuesBtn.addEventListener('click', showUserIssues);
     if (userPollsBtn) userPollsBtn.addEventListener('click', () => showPanel(PANEL_STATES.VIEW_POLLS));
+    if (userSwitchRoleBtn) userSwitchRoleBtn.addEventListener('click', () => showPanel(PANEL_STATES.LOGIN, currentUser.role));
     if (userLogoutBtn) userLogoutBtn.addEventListener('click', logoutUser);
     
     // Кнопки для специалиста
     const specIssuesBtn = document.getElementById('specIssuesBtn');
     const specAddObjectBtn = document.getElementById('specAddObjectBtn');
+    const specSwitchRoleBtn = document.getElementById('specSwitchRoleBtn');
     const specLogoutBtn = document.getElementById('specLogoutBtn');
     
     if (specIssuesBtn) specIssuesBtn.addEventListener('click', () => showPanel(PANEL_STATES.SPECIALIST_DASHBOARD));
     if (specAddObjectBtn) specAddObjectBtn.addEventListener('click', showAddObjectForm);
+    if (specSwitchRoleBtn) specSwitchRoleBtn.addEventListener('click', () => showPanel(PANEL_STATES.LOGIN, currentUser.role));
     if (specLogoutBtn) specLogoutBtn.addEventListener('click', logoutUser);
     
     // Кнопки для администратора
@@ -816,20 +837,21 @@ function initializePanelButtons() {
     const adminCreatePollBtn = document.getElementById('adminCreatePollBtn');
     const adminManagePollsBtn = document.getElementById('adminManagePollsBtn');
     const adminStatsBtn = document.getElementById('adminStatsBtn');
+    const adminSwitchRoleBtn = document.getElementById('adminSwitchRoleBtn');
     const adminLogoutBtn = document.getElementById('adminLogoutBtn');
     
     if (adminAllIssuesBtn) adminAllIssuesBtn.addEventListener('click', showAllIssues);
     if (adminCreatePollBtn) adminCreatePollBtn.addEventListener('click', () => showPanel(PANEL_STATES.CREATE_POLL));
     if (adminManagePollsBtn) adminManagePollsBtn.addEventListener('click', () => showPanel(PANEL_STATES.VIEW_POLLS));
     if (adminStatsBtn) adminStatsBtn.addEventListener('click', showStatistics);
+    if (adminSwitchRoleBtn) adminSwitchRoleBtn.addEventListener('click', () => showPanel(PANEL_STATES.LOGIN, currentUser.role));
     if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', logoutUser);
 }
 
 function handleLogin() {
     const email = document.getElementById('loginEmail').value;
-    const name = document.getElementById('loginName').value || email.split('@')[0];
+    const nameField = document.getElementById('loginName').value;
     const role = document.querySelector('.login-type-btn.active').dataset.role;
-    const password = document.getElementById('loginPassword')?.value;
     
     // Простая валидация
     if (role === 'user') {
@@ -840,31 +862,21 @@ function handleLogin() {
         
         currentUser = {
             role: ROLES.USER,
-            name: name,
+            name: nameField || email.split('@')[0],
             email: email,
             id: 'user_' + Date.now()
         };
     } else if (role === 'specialist') {
-        if (!password || password !== 'specialist123') {
-            showNotification('Неверный пароль специалиста', 'error');
-            return;
-        }
-        
         currentUser = {
             role: ROLES.SPECIALIST,
-            name: 'Специалист',
+            name: nameField || 'Специалист',
             email: '',
             id: 'specialist_' + Date.now()
         };
     } else if (role === 'admin') {
-        if (!password || password !== 'admin123') {
-            showNotification('Неверный пароль администратора', 'error');
-            return;
-        }
-        
         currentUser = {
             role: ROLES.ADMIN,
-            name: 'Администратор',
+            name: nameField || 'Администратор',
             email: '',
             id: 'admin_' + Date.now()
         };
@@ -980,6 +992,7 @@ function updateIssueStatus(issueId, status, response) {
 function updateUserInterface() {
     const userNameElement = document.querySelector('.user-name');
     const userAvatar = document.querySelector('.user-avatar i');
+    const headerLogoutBtn = document.getElementById('headerLogoutBtn');
     
     if (userNameElement) {
         userNameElement.textContent = currentUser.name;
@@ -987,6 +1000,10 @@ function updateUserInterface() {
     
     if (userAvatar) {
         userAvatar.className = getRoleIcon(currentUser.role);
+    }
+
+    if (headerLogoutBtn) {
+        headerLogoutBtn.style.display = currentUser.role === ROLES.GUEST ? 'none' : 'inline-flex';
     }
     
     // Показываем/скрываем кнопки в зависимости от роли
