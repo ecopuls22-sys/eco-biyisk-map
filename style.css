@@ -102,6 +102,29 @@ body {
     flex-shrink: 0;
 }
 
+.header-logout {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.3s, transform 0.2s;
+}
+
+.header-logout:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+.header-logout:active {
+    transform: translateY(0);
+}
+
 .data-info {
     display: flex;
     flex-direction: column;
@@ -1481,3 +1504,4 @@ body {
         flex-direction: column;
     }
 }
+
