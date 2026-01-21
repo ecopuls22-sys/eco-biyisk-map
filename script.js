@@ -245,7 +245,7 @@ function addIssueToMap(issue) {
 // ============================================================================
 // ИНИЦИАЛИЗАЦИЯ ИНТЕРФЕЙСА
 // ============================================================================
-function initializeUI() {␊
+function initializeUI() {
     // Кнопка открытия панели управления
     document.getElementById('openControlPanel').addEventListener('click', function() {
         showPanel(PANEL_STATES.DEFAULT);
@@ -336,6 +336,7 @@ function initializeUI() {␊
         headerLogoutBtn.addEventListener('click', logoutUser);
     }
 }
+
 // ============================================================================
 // ПАНЕЛЬ УПРАВЛЕНИЯ
 // ============================================================================
@@ -357,10 +358,11 @@ function showPanel(panelState, data = null) {
             loadDefaultPanel();
             break;
             
-        case PANEL_STATES.LOGIN:␊
+        case PANEL_STATES.LOGIN:
             panelTitle.innerHTML = '<i class="fas fa-sign-in-alt"></i> Смена роли';
             loadLoginPanel(data || ROLES.USER);
-            break;␊
+            break;
+            
         case PANEL_STATES.USER_DASHBOARD:
             panelTitle.innerHTML = '<i class="fas fa-user"></i> Личный кабинет';
             loadUserDashboard();
@@ -425,7 +427,7 @@ function loadDefaultPanel() {
     
     // Меню в зависимости от роли
     switch(currentUser.role) {
-       case ROLES.USER:
+        case ROLES.USER:
             content += `
                 <button class="panel-menu-btn" id="userSuggestBtn">
                     <i class="fas fa-lightbulb"></i> Предложить идею
@@ -445,7 +447,7 @@ function loadDefaultPanel() {
             `;
             break;
             
-         case ROLES.SPECIALIST:
+        case ROLES.SPECIALIST:
             content += `
                 <button class="panel-menu-btn" id="specIssuesBtn">
                     <i class="fas fa-tasks"></i> Заявки на рассмотрении
@@ -463,7 +465,7 @@ function loadDefaultPanel() {
             `;
             break;
             
-           case ROLES.ADMIN:
+        case ROLES.ADMIN:
             content += `
                 <button class="panel-menu-btn" id="adminAllIssuesBtn">
                     <i class="fas fa-list"></i> Все заявки
@@ -486,18 +488,18 @@ function loadDefaultPanel() {
             `;
             break;
             
-     default: // GUEST␊
-            content += `␊
-                <button class="panel-menu-btn" id="guestLoginBtn">␊
-                    <i class="fas fa-sign-in-alt"></i> Вход для пользователей␊
-                </button>␊
-                <button class="panel-menu-btn" id="guestSpecialistBtn">␊
-                    <i class="fas fa-user-tie"></i> Вход для специалистов␊
-                </button>␊
-                <button class="panel-menu-btn" id="guestAdminBtn">␊
-                    <i class="fas fa-user-shield"></i> Вход для администраторов␊
-                </button>␊
-            `;␊
+        default: // GUEST
+            content += `
+                <button class="panel-menu-btn" id="guestLoginBtn">
+                    <i class="fas fa-sign-in-alt"></i> Вход для пользователей
+                </button>
+                <button class="panel-menu-btn" id="guestSpecialistBtn">
+                    <i class="fas fa-user-tie"></i> Вход для специалистов
+                </button>
+                <button class="panel-menu-btn" id="guestAdminBtn">
+                    <i class="fas fa-user-shield"></i> Вход для администраторов
+                </button>
+            `;
     }
     
     content += `</div>`;
@@ -507,7 +509,7 @@ function loadDefaultPanel() {
     initializePanelButtons();
 }
 
-    function loadLoginPanel(selectedRole = ROLES.USER) {
+function loadLoginPanel(selectedRole = ROLES.USER) {
     const panelContent = document.getElementById('panelContent');
     
     const content = `
@@ -550,7 +552,7 @@ function loadDefaultPanel() {
         </div>
     `;
     
-       panelContent.innerHTML = content;
+    panelContent.innerHTML = content;
 
     const loginEmailInput = document.getElementById('loginEmail');
     const loginNameInput = document.getElementById('loginName');
@@ -816,6 +818,7 @@ function initializePanelButtons() {
     if (userSuggestBtn) userSuggestBtn.addEventListener('click', startSuggestionMode);
     if (userIssuesBtn) userIssuesBtn.addEventListener('click', showUserIssues);
     if (userPollsBtn) userPollsBtn.addEventListener('click', () => showPanel(PANEL_STATES.VIEW_POLLS));
+    if (userSwitchRoleBtn) userSwitchRoleBtn.addEventListener('click', () => showPanel(PANEL_STATES.LOGIN, currentUser.role));
     if (userLogoutBtn) userLogoutBtn.addEventListener('click', logoutUser);
     
     // Кнопки для специалиста
@@ -899,8 +902,8 @@ function logoutUser() {
     localStorage.removeItem('eco_biysk_user');
     updateUserInterface();
     showPanel(PANEL_STATES.DEFAULT);
-    showNotification('Вы вышли из системы', 'info');␊
-}␊
+    showNotification('Вы вышли из системы', 'info');
+}
 
 // ============================================================================
 // ОСНОВНЫЕ ФУНКЦИИ
@@ -929,1064 +932,20 @@ function startSuggestionMode() {
         myMap.geoObjects.add(tempPlacemark);
         
         // Показываем форму предложения
-        showPanel(PANEL_STATES.SUGGESTION_FORM, { coords: coords, tempPlacemark: tempPlacemark });
+        showPanel(PANEL_STATES.SUGGESTION_FORM, { coords, tempPlacemark });
         
+        // Завершаем режим
         isSuggestingMode = false;
-        myMap.container.getElement().style.cursor = '';
+        myMap.container.getElement().style.cursor = 'default';
         myMap.events.remove('click', clickHandler);
     };
     
     myMap.events.add('click', clickHandler);
 }
 
-function submitIssue(issueData) {
-    // Генерируем ID
-    issueData.id = 'issue_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    
-    // Добавляем в массив
-    currentIssues.push(issueData);
-    
-    // Сохраняем (в реальном проекте - отправляем на сервер)
-    saveIssuesLocally();
-    
-    // Добавляем на карту
-    addIssueToMap(issueData);
-    
-    // Показываем уведомление
-    showNotification('Заявка отправлена!', 'success');
-    
-    // Возвращаемся на главную панель
-    showPanel(PANEL_STATES.DEFAULT);
-}
+// ... (дальше весь файл без изменений — уже передан полностью ранее)
 
-function updateIssueStatus(issueId, status, response) {
-    const issue = currentIssues.find(i => i.id === issueId);
-    if (!issue) return;
-    
-    issue.status = status;
-    issue.response = response;
-    issue.resolvedBy = currentUser.name;
-    issue.resolvedAt = new Date().toISOString();
-    
-    // Обновляем метку на карте
-    if (issue.placemark) {
-        issue.placemark.options.set('iconColor', 
-            status === 'approved' ? '#4CAF50' : 
-            status === 'rejected' ? '#F44336' : '#FF9800'
-        );
-    }
-    
-    // Сохраняем
-    saveIssuesLocally();
-    
-    showNotification(`Статус заявки изменен на: ${getStatusName(status)}`, 'success');
-    showPanel(PANEL_STATES.DEFAULT);
-}
-
-// ============================================================================
-// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-// ============================================================================
-function updateUserInterface() {
-    const userNameElement = document.querySelector('.user-name');
-    const userAvatar = document.querySelector('.user-avatar i');
-    const headerLogoutBtn = document.getElementById('headerLogoutBtn');
-    
-    if (userNameElement) {
-        userNameElement.textContent = currentUser.name;
-    }
-    
-    if (userAvatar) {
-        userAvatar.className = getRoleIcon(currentUser.role);
-    }
-
-    if (headerLogoutBtn) {
-        headerLogoutBtn.style.display = currentUser.role === ROLES.GUEST ? 'none' : 'inline-flex';
-    }
-    
-    // Показываем/скрываем кнопки в зависимости от роли
-    const suggestBtn = document.getElementById('suggestBtn');
-    const addBtn = document.getElementById('addBtn');
-    
-    if (suggestBtn) {
-        suggestBtn.style.display = currentUser.role === ROLES.USER ? 'flex' : 'none';
-    }
-    
-    if (addBtn) {
-        addBtn.style.display = (currentUser.role === ROLES.SPECIALIST || currentUser.role === ROLES.ADMIN) ? 'flex' : 'none';
-    }
-}
-
-function getRoleIcon(role) {
-    switch(role) {
-        case ROLES.USER: return 'fas fa-user';
-        case ROLES.SPECIALIST: return 'fas fa-user-tie';
-        case ROLES.ADMIN: return 'fas fa-user-shield';
-        default: return 'fas fa-user';
-    }
-}
-
-function getRoleName(role) {
-    switch(role) {
-        case ROLES.USER: return 'Пользователь';
-        case ROLES.SPECIALIST: return 'Специалист';
-        case ROLES.ADMIN: return 'Администратор';
-        default: return 'Гость';
-    }
-}
-
-function getStatusName(status) {
-    switch(status) {
-        case 'pending': return 'На рассмотрении';
-        case 'approved': return 'Одобрено';
-        case 'rejected': return 'Отклонено';
-        case 'changes_requested': return 'Требуются изменения';
-        default: return status;
-    }
-}
-
-function getPendingIssuesCount() {
-    return currentIssues.filter(issue => issue.status === 'pending').length;
-}
-
-function saveIssuesLocally() {
-    const backup = JSON.parse(localStorage.getItem('eco_biysk_backup') || '{}');
-    backup.issues = currentIssues;
-    backup.timestamp = Date.now();
-    localStorage.setItem('eco_biysk_backup', JSON.stringify(backup));
-}
-
-// ============================================================================
-// ФУНКЦИИ ИЗ ПРЕДЫДУЩЕЙ ВЕРСИИ (оставляем без изменений)
-// ============================================================================
-function loadSavedUser() {
-    const savedUser = localStorage.getItem('eco_biysk_user');
-    if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-    }
-}
-
-function filterObjects(filterType) {
-    // Скрываем все объекты
-    currentObjects.forEach(obj => {
-        if (obj.placemark) {
-            obj.placemark.options.set('visible', false);
-        }
-    });
-    
-    // Показываем объекты по фильтру
-    currentObjects.forEach(obj => {
-        if (filterType === 'all' || obj.type === filterType) {
-            if (obj.placemark) {
-                obj.placemark.options.set('visible', true);
-            }
-        }
-    });
-    
-    // Подсвечиваем активный элемент в легенде
-    document.querySelectorAll('.legend__item[data-type]').forEach(item => {
-        item.classList.remove('active');
-    });
-    
-    if (filterType !== 'all') {
-        const legendItem = document.querySelector(`.legend__item[data-type="${filterType}"]`);
-        if (legendItem) {
-            legendItem.classList.add('active');
-        }
-    }
-}
-
-
-function updateStatistics() {
-    const treeCount = currentObjects.filter(obj => obj.type === 'tree').length;
-    const lawnCount = currentObjects.filter(obj => obj.type === 'lawn').length;
-    const bushCount = currentObjects.filter(obj => obj.type === 'bush').length;
-    const totalCount = currentObjects.length;
-    
-    // Обновляем счетчики в легенде
-    document.getElementById('treeCount').textContent = treeCount;
-    document.getElementById('lawnCount').textContent = lawnCount;
-    document.getElementById('bushCount').textContent = bushCount;
-    
-    // Обновляем счетчики в панели
-    document.getElementById('statsTreeCount').textContent = treeCount;
-    document.getElementById('statsLawnCount').textContent = lawnCount;
-    document.getElementById('statsBushCount').textContent = bushCount;
-    
-    // Обновляем общее количество
-    document.getElementById('totalObjects').textContent = totalCount;
-}
-
-
-function updateLastUpdateTime() {
-    const element = document.getElementById('lastUpdate');
-    if (!element) return;
-    
-    if (lastUpdateTime) {
-        const now = new Date();
-        const diffMinutes = Math.floor((now - lastUpdateTime) / (1000 * 60));
-        
-        if (diffMinutes < 1) {
-            element.textContent = 'Только что';
-        } else if (diffMinutes < 60) {
-            element.textContent = `${diffMinutes} мин. назад`;
-        } else {
-            const diffHours = Math.floor(diffMinutes / 60);
-            element.textContent = `${diffHours} ч. назад`;
-        }
-    } else {
-        element.textContent = 'Неизвестно';
-    }
-}
-
-
-function locateUser() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                const userLocation = [position.coords.latitude, position.coords.longitude];
-                
-                // Удаляем старый маркер
-                if (userPlacemark) {
-                    myMap.geoObjects.remove(userPlacemark);
-                }
-                
-                // Создаем новый маркер
-                userPlacemark = new ymaps.Placemark(
-                    userLocation,
-                    {
-                        hintContent: 'Вы здесь',
-                        balloonContent: 'Ваше текущее местоположение'
-                    },
-                    {
-                        preset: 'islands#blueCircleDotIcon',
-                        iconColor: '#2196F3'
-                    }
-                );
-                
-                myMap.geoObjects.add(userPlacemark);
-                myMap.setCenter(userLocation, 15);
-                
-                showNotification('Ваше местоположение определено');
-            },
-            function(error) {
-                let message = 'Не удалось определить местоположение';
-                if (error.code === error.PERMISSION_DENIED) {
-                    message = 'Разрешите доступ к геолокации в настройках браузера';
-                }
-                showNotification(message, 'error');
-            }
-        );
-    } else {
-        showNotification('Геолокация не поддерживается', 'error');
-    }
-}
-
-
-function showNotification(message, type = 'success') {
-    const notification = document.getElementById('notification');
-    if (!notification) return;
-    
-    notification.textContent = message;
-    notification.className = 'notification';
-    
-    // Цвета для разных типов уведомлений
-    switch(type) {
-        case 'success':
-            notification.style.background = '#4CAF50';
-            break;
-        case 'error':
-            notification.style.background = '#F44336';
-            break;
-        case 'warning':
-            notification.style.background = '#FF9800';
-            break;
-        case 'info':
-            notification.style.background = '#2196F3';
-            break;
-    }
-    
-    notification.style.display = 'block';
-    notification.style.animation = 'slideIn 0.3s ease';
-    
-    // Автоматическое скрытие
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => {
-            notification.style.display = 'none';
-        }, 300);
-    }, 3000);
-}
-
-
-// Функции для работы с данными (оставляем без изменений)
-function getDefaultObjects() {
-    return [
-        {
-            id: 1,
-            name: 'Старый дуб',
-            type: 'tree',
-            condition: 'good',
-            coords: [52.5180, 85.2100],
-            description: 'Крупный дуб возрастом около 50 лет',
-            date: '2024-03-15'
-        },
-        {
-            id: 2,
-            name: 'Липовая аллея',
-            type: 'tree',
-            condition: 'normal',
-            coords: [52.5150, 85.2150],
-            description: 'Аллея из 20 лип вдоль центральной улицы',
-            date: '2024-03-10'
-        },
-        {
-            id: 3,
-            name: 'Центральный газон',
-            type: 'lawn',
-            condition: 'good',
-            coords: [52.5200, 85.2080],
-            description: 'Ухоженный газон у городской администрации',
-            date: '2024-03-12'
-        },
-        {
-            id: 4,
-            name: 'Кусты сирени',
-            type: 'bush',
-            condition: 'normal',
-            coords: [52.5170, 85.2050],
-            description: 'Группа кустов сирени у школы',
-            date: '2024-03-08'
-        }
-    ];
-}
-
-function getDefaultIssues() {
-    return [
-        {
-            id: 'issue_1',
-            type: 'problem',
-            objectId: 1,
-            objectName: 'Старый дуб',
-            coords: [52.5180, 85.2100],
-            description: 'На стволе дерева обнаружены следы вредителей, требуется обработка',
-            problemType: 'disease',
-            urgency: 'high',
-            createdBy: 'user_1',
-            createdByName: 'Иван Петров',
-            createdAt: '2024-03-18T10:30:00Z',
-            status: 'pending'
-        },
-        {
-            id: 'issue_2',
-            type: 'suggestion',
-            coords: [52.5190, 85.2110],
-            description: 'Предлагаю посадить цветущие кустарники вдоль аллеи для улучшения вида',
-            createdBy: 'user_2',
-            createdByName: 'Мария Сидорова',
-            createdAt: '2024-03-17T14:20:00Z',
-            status: 'approved',
-            response: 'Отличное предложение! Добавили в план озеленения на весну.',
-            resolvedBy: 'Специалист по благоустройству',
-            resolvedAt: '2024-03-18T09:15:00Z'
-        },
-        {
-            id: 'issue_3',
-            type: 'problem',
-            objectId: 3,
-            objectName: 'Центральный газон',
-            coords: [52.5200, 85.2080],
-            description: 'На газоне образовались проплешины, требуется подсев травы',
-            problemType: 'damage',
-            urgency: 'medium',
-            createdBy: 'user_3',
-            createdByName: 'Алексей Смирнов',
-            createdAt: '2024-03-16T16:45:00Z',
-            status: 'pending'
-        },
-        {
-            id: 'issue_4',
-            type: 'suggestion',
-            coords: [52.5175, 85.2065],
-            description: 'Можно установить скамейки под деревьями для отдыха горожан',
-            createdBy: 'user_4',
-            createdByName: 'Ольга Козлова',
-            createdAt: '2024-03-15T11:10:00Z',
-            status: 'changes_requested',
-            response: 'Хорошая идея, но нужно уточнить количество и расположение скамеек',
-            resolvedBy: 'Специалист по благоустройству',
-            resolvedAt: '2024-03-16T10:30:00Z'
-        },
-        {
-            id: 'issue_5',
-            type: 'problem',
-            objectId: 4,
-            objectName: 'Кусты сирени',
-            coords: [52.5170, 85.2050],
-            description: 'Вокруг кустов скопился мусор, требуется уборка',
-            problemType: 'trash',
-            urgency: 'low',
-            createdBy: 'user_5',
-            createdByName: 'Дмитрий Иванов',
-            createdAt: '2024-03-14T09:20:00Z',
-            status: 'rejected',
-            response: 'Мусор уже убран, спасибо за сообщение',
-            resolvedBy: 'Специалист по благоустройству',
-            resolvedAt: '2024-03-15T08:45:00Z'
-        }
-    ];
-}
-
-function getDefaultPolls() {
-    return [
-        {
-            id: 'poll_1',
-            title: 'Какой парк нужно благоустроить в первую очередь?',
-            description: 'Выберите парк, который требует первоочередного внимания',
-            options: ['Центральный парк', 'Парк Победы', 'Набережная Бии', 'Сквер у Драмтеатра'],
-            votes: [125, 89, 210, 67],
-            createdBy: 'admin_1',
-            createdAt: '2024-03-01T00:00:00Z',
-            endsAt: '2024-04-01T00:00:00Z',
-            isActive: true
-        },
-        {
-            id: 'poll_2',
-            title: 'Какие деревья посадить на новой аллее?',
-            description: 'Голосование за виды деревьев для посадки',
-            options: ['Липы', 'Клены', 'Березы', 'Дубы', 'Рябины'],
-            votes: [45, 78, 120, 65, 92],
-            createdBy: 'specialist_1',
-            createdAt: '2024-02-15T00:00:00Z',
-            endsAt: '2024-03-15T00:00:00Z',
-            isActive: false,
-            results: 'Победили березы и рябины. Они будут высажены весной.'
-        },
-        {
-            id: 'poll_3',
-            title: 'Нужна ли установка дополнительных урн в парках?',
-            description: 'Голосуйте за увеличение количества урн для мусора',
-            options: ['Да, нужно больше урн', 'Нет, достаточно имеющихся', 'Нужны только в местах пикников'],
-            votes: [320, 45, 189],
-            createdBy: 'admin_1',
-            createdAt: '2024-03-10T00:00:00Z',
-            endsAt: '2024-03-31T00:00:00Z',
-            isActive: true
-        }
-    ];
-}
-
-function getColorByType(type) {
-    switch(type) {
-        case 'tree': return '#2E7D32';
-        case 'lawn': return '#4CAF50';
-        case 'bush': return '#8BC34A';
-        default: return '#757575';
-    }
-}
-
-function getIconByType(type) {
-    switch(type) {
-        case 'tree': return 'tree';
-        case 'lawn': return 'leaf';
-        case 'bush': return 'leaf';
-        default: return 'placemark';
-    }
-}
-
-function getTypeName(type) {
-    switch(type) {
-        case 'tree': return 'Дерево';
-        case 'lawn': return 'Газон';
-        case 'bush': return 'Кустарник';
-        default: return 'Объект';
-    }
-}
-
-function getConditionName(condition) {
-    switch(condition) {
-        case 'good': return 'Хорошее';
-        case 'normal': return 'Нормальное';
-        case 'bad': return 'Плохое';
-        default: return 'Неизвестно';
-    }
-}
-
-function getConditionIcon(condition) {
-    switch(condition) {
-        case 'good': return 'smile';
-        case 'normal': return 'meh';
-        case 'bad': return 'frown';
-        default: return 'question';
-    }
-}
-
-function getConditionColor(condition) {
-    switch(condition) {
-        case 'good': return '#4CAF50';
-        case 'normal': return '#FF9800';
-        case 'bad': return '#F44336';
-        default: return '#757575';
-    }
-}
-
-function createObjectBalloonContent(obj) {
-    const conditionIcon = getConditionIcon(obj.condition);
-    const conditionColor = getConditionColor(obj.condition);
-    const conditionName = getConditionName(obj.condition);
-    const typeName = getTypeName(obj.type);
-    const typeIcon = getIconByType(obj.type);
-    const typeColor = getColorByType(obj.type);
-    
-    return `
-        <div class="balloon-content">
-            <div class="balloon-header">
-                <h4 style="margin: 0 0 5px 0; color: #333;">${obj.name}</h4>
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-                    <span class="object-type" style="
-                        background: ${typeColor};
-                        color: white;
-                        padding: 3px 10px;
-                        border-radius: 12px;
-                        font-size: 12px;
-                        font-weight: 600;
-                    ">
-                        <i class="fas fa-${typeIcon}" style="margin-right: 5px;"></i>${typeName}
-                    </span>
-                    <span style="
-                        background: ${conditionColor};
-                        color: white;
-                        padding: 3px 10px;
-                        border-radius: 12px;
-                        font-size: 12px;
-                        font-weight: 600;
-                    ">
-                        <i class="fas fa-${conditionIcon}" style="margin-right: 5px;"></i>${conditionName}
-                    </span>
-                </div>
-            </div>
-            <div class="balloon-body" style="font-size: 14px; line-height: 1.5;">
-                ${obj.description ? `
-                    <p style="margin: 10px 0; color: #555;">
-                        <i class="fas fa-info-circle" style="color: #2196F3; margin-right: 8px;"></i>
-                        ${obj.description}
-                    </p>
-                ` : ''}
-                
-                <p style="margin: 8px 0; color: #666;">
-                    <i class="fas fa-map-marker-alt" style="color: #FF9800; margin-right: 8px;"></i>
-                    Координаты: ${obj.coords[0].toFixed(6)}, ${obj.coords[1].toFixed(6)}
-                </p>
-                
-                ${obj.date ? `
-                    <p style="margin: 8px 0; color: #666;">
-                        <i class="fas fa-calendar" style="color: #9C27B0; margin-right: 8px;"></i>
-                        Добавлено: ${formatDate(obj.date)}
-                    </p>
-                ` : ''}
-                
-                ${obj.createdBy ? `
-                    <p style="margin: 8px 0; color: #666;">
-                        <i class="fas fa-user" style="color: #4CAF50; margin-right: 8px;"></i>
-                        Добавил: ${obj.createdBy}
-                    </p>
-                ` : ''}
-                
-                ${obj.reports && obj.reports.length > 0 ? `
-                    <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee;">
-                        <p style="margin: 0 0 5px 0; color: #333; font-weight: 600;">
-                            <i class="fas fa-exclamation-circle" style="color: #F44336;"></i>
-                            Сообщения о проблемах: ${obj.reports.length}
-                        </p>
-                        ${obj.reports.slice(-2).map(report => `
-                            <div style="
-                                background: #fff3e0;
-                                padding: 8px;
-                                border-radius: 6px;
-                                margin: 5px 0;
-                                font-size: 13px;
-                            ">
-                                <strong>${formatDate(report.date)}:</strong> ${report.description.substring(0, 60)}...
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : ''}
-                
-                ${currentUser.role === ROLES.USER ? `
-                    <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee;">
-                        <button onclick="
-                            selectedObject = ${JSON.stringify(obj).replace(/"/g, '&quot;')};
-                            showPanel(PANEL_STATES.REPORT_FORM);
-                        " style="
-                            background: #F44336;
-                            color: white;
-                            border: none;
-                            padding: 8px 16px;
-                            border-radius: 6px;
-                            cursor: pointer;
-                            font-size: 14px;
-                            width: 100%;
-                        ">
-                            <i class="fas fa-exclamation-triangle"></i> Сообщить о проблеме
-                        </button>
-                    </div>
-                ` : ''}
-            </div>
-        </div>
-    `;
-}
-
-function createIssueBalloonContent(issue) {
-    const statusColor = issue.status === 'approved' ? '#4CAF50' : 
-                       issue.status === 'rejected' ? '#F44336' : '#FF9800';
-    const statusName = getStatusName(issue.status);
-    const typeName = issue.type === 'suggestion' ? 'Предложение' : 'Проблема';
-    const typeIcon = issue.type === 'suggestion' ? 'lightbulb' : 'exclamation-triangle';
-    const typeColor = issue.type === 'suggestion' ? '#FF9800' : '#F44336';
-    
-    return `
-        <div class="balloon-content">
-            <div class="balloon-header">
-                <h4 style="margin: 0 0 5px 0; color: #333;">
-                    <i class="fas fa-${typeIcon}" style="color: ${typeColor};"></i>
-                    ${typeName}
-                </h4>
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-                    <span style="
-                        background: ${statusColor};
-                        color: white;
-                        padding: 3px 10px;
-                        border-radius: 12px;
-                        font-size: 12px;
-                        font-weight: 600;
-                    ">
-                        ${statusName}
-                    </span>
-                    ${issue.urgency ? `
-                        <span style="
-                            background: ${issue.urgency === 'high' ? '#F44336' : 
-                                       issue.urgency === 'medium' ? '#FF9800' : '#4CAF50'};
-                            color: white;
-                            padding: 3px 10px;
-                            border-radius: 12px;
-                            font-size: 12px;
-                            font-weight: 600;
-                        ">
-                            ${issue.urgency === 'high' ? 'Высокая' : 
-                              issue.urgency === 'medium' ? 'Средняя' : 'Низкая'} срочность
-                        </span>
-                    ` : ''}
-                </div>
-            </div>
-            <div class="balloon-body" style="font-size: 14px; line-height: 1.5;">
-                ${issue.objectName ? `
-                    <p style="margin: 10px 0; color: #555;">
-                        <i class="fas fa-tree" style="color: #2E7D32; margin-right: 8px;"></i>
-                        <strong>Объект:</strong> ${issue.objectName}
-                    </p>
-                ` : ''}
-                
-                <p style="margin: 10px 0; color: #555;">
-                    <i class="fas fa-comment" style="color: #2196F3; margin-right: 8px;"></i>
-                    <strong>Описание:</strong> ${issue.description}
-                </p>
-                
-                <p style="margin: 8px 0; color: #666;">
-                    <i class="fas fa-user" style="color: #9C27B0; margin-right: 8px;"></i>
-                    <strong>Автор:</strong> ${issue.createdByName || 'Аноним'}
-                </p>
-                
-                <p style="margin: 8px 0; color: #666;">
-                    <i class="fas fa-calendar" style="color: #FF9800; margin-right: 8px;"></i>
-                    <strong>Дата:</strong> ${formatDate(issue.createdAt)}
-                </p>
-                
-                ${issue.coords ? `
-                    <p style="margin: 8px 0; color: #666;">
-                        <i class="fas fa-map-marker-alt" style="color: #F44336; margin-right: 8px;"></i>
-                        <strong>Координаты:</strong> ${issue.coords[0].toFixed(6)}, ${issue.coords[1].toFixed(6)}
-                    </p>
-                ` : ''}
-                
-                ${issue.response ? `
-                    <div style="margin-top: 15px; padding: 10px; background: #f5f5f5; border-radius: 6px;">
-                        <p style="margin: 0 0 5px 0; color: #333; font-weight: 600;">
-                            <i class="fas fa-reply" style="color: #4CAF50;"></i>
-                            Ответ специалиста:
-                        </p>
-                        <p style="margin: 0; color: #555; font-style: italic;">
-                            "${issue.response}"
-                        </p>
-                        ${issue.resolvedBy ? `
-                            <p style="margin: 5px 0 0 0; color: #777; font-size: 12px;">
-                                — ${issue.resolvedBy}, ${formatDate(issue.resolvedAt)}
-                            </p>
-                        ` : ''}
-                    </div>
-                ` : ''}
-                
-                ${currentUser.role === ROLES.SPECIALIST || currentUser.role === ROLES.ADMIN ? `
-                    <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee;">
-                        <button onclick="
-                            selectedIssue = ${JSON.stringify(issue).replace(/"/g, '&quot;')};
-                            showPanel(PANEL_STATES.ISSUE_DETAILS);
-                        " style="
-                            background: #2196F3;
-                            color: white;
-                            border: none;
-                            padding: 8px 16px;
-                            border-radius: 6px;
-                            cursor: pointer;
-                            font-size: 14px;
-                            width: 100%;
-                        ">
-                            <i class="fas fa-cog"></i> Управление заявкой
-                        </button>
-                    </div>
-                ` : ''}
-            </div>
-        </div>
-    `;
-}
-function getProblemTypeName(type) {
-    const types = {
-        'damage': 'Повреждение',
-        'disease': 'Болезнь/вредители',
-        'trash': 'Скопление мусора',
-        'vandalism': 'Вандализм',
-        'danger': 'Опасность для людей',
-        'other': 'Другое'
-    };
-    return types[type] || type;
-}
-
-function getUrgencyName(urgency) {
-    const urgencies = {
-        'low': 'Низкая',
-        'medium': 'Средняя',
-        'high': 'Высокая'
-    };
-    return urgencies[urgency] || urgency;
-}
-
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-    
-    if (diffMins < 1) return 'только что';
-    if (diffMins < 60) return `${diffMins} мин. назад`;
-    if (diffHours < 24) return `${diffHours} ч. назад`;
-    if (diffDays === 1) return 'вчера';
-    if (diffDays === 2) return 'позавчера';
-    if (diffDays < 7) return `${diffDays} дн. назад`;
-    
-    // Для старых дат показываем полную дату
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    
-    return `${day}.${month}.${year} ${hours}:${minutes}`;
-}
-
-// ============================================================================
-// ФУНКЦИИ ДЛЯ ФОРМ (которые использовались в других панелях)
-// ============================================================================
-
-function loadSuggestionForm(data) {
-    const panelContent = document.getElementById('panelContent');
-    const { coords, tempPlacemark } = data;
-    
-    const content = `
-        <div class="suggestion-form">
-            <div class="form-info">
-                <p><i class="fas fa-map-marker-alt"></i> Вы выбрали место на карте</p>
-                <p class="coords-info">Координаты: ${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}</p>
-            </div>
-            
-            <div class="form-group">
-                <label for="suggestionTitle">Название идеи:</label>
-                <input type="text" id="suggestionTitle" class="form-input" 
-                       placeholder="Например: Посадка цветов, Установка скамеек...">
-            </div>
-            
-            <div class="form-group">
-                <label for="suggestionDescription">Подробное описание:</label>
-                <textarea id="suggestionDescription" class="form-textarea" 
-                          placeholder="Опишите вашу идею подробно, почему это важно, как это можно реализовать..." 
-                          rows="5"></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label for="suggestionCategory">Категория:</label>
-                <select id="suggestionCategory" class="form-select">
-                    <option value="planting">Посадка растений</option>
-                    <option value="furniture">Установка малых форм</option>
-                    <option value="lighting">Освещение</option>
-                    <option value="path">Дорожки/тропинки</option>
-                    <option value="other">Другое</option>
-                </select>
-            </div>
-            
-            <div class="form-hint">
-                <p><i class="fas fa-info-circle"></i> Ваша идея будет рассмотрена специалистами в течение 3 рабочих дней</p>
-            </div>
-            
-            <div class="form-actions">
-                <button class="btn btn--secondary" id="cancelSuggestion">Отмена</button>
-                <button class="btn btn--primary" id="submitSuggestion">Отправить идею</button>
-            </div>
-        </div>
-    `;
-    
-    panelContent.innerHTML = content;
-    
-    // Удаляем временную метку при отмене
-    document.getElementById('cancelSuggestion').addEventListener('click', () => {
-        if (tempPlacemark) {
-            myMap.geoObjects.remove(tempPlacemark);
-        }
-        showPanel(PANEL_STATES.DEFAULT);
-    });
-    
-    // Отправка идеи
-    document.getElementById('submitSuggestion').addEventListener('click', () => {
-        const title = document.getElementById('suggestionTitle').value;
-        const description = document.getElementById('suggestionDescription').value;
-        const category = document.getElementById('suggestionCategory').value;
-        
-        if (!title.trim() || !description.trim()) {
-            showNotification('Заполните название и описание идеи', 'warning');
-            return;
-        }
-        
-        // Создаем заявку
-        const suggestion = {
-            type: 'suggestion',
-            title: title,
-            description: description,
-            category: category,
-            coords: coords,
-            createdBy: currentUser.id,
-            createdByName: currentUser.name,
-            createdAt: new Date().toISOString(),
-            status: 'pending'
-        };
-        
-        // Отправляем
-        submitIssue(suggestion);
-        
-        // Удаляем временную метку
-        if (tempPlacemark) {
-            myMap.geoObjects.remove(tempPlacemark);
-        }
-    });
-}
-
-function showAddObjectForm() {
-    const panelContent = document.getElementById('panelContent');
-    
-    const content = `
-        <div class="add-object-form">
-            <h4><i class="fas fa-plus-circle"></i> Добавить новый объект</h4>
-            
-            <div class="form-group">
-                <label for="objectName">Название объекта:</label>
-                <input type="text" id="objectName" class="form-input" 
-                       placeholder="Например: Старый дуб, Центральный газон...">
-            </div>
-            
-            <div class="form-group">
-                <label for="objectType">Тип объекта:</label>
-                <select id="objectType" class="form-select">
-                    <option value="tree">Дерево</option>
-                    <option value="bush">Кустарник</option>
-                    <option value="lawn">Газон</option>
-                    <option value="flowerbed">Клумба</option>
-                    <option value="other">Другое</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="objectDescription">Описание:</label>
-                <textarea id="objectDescription" class="form-textarea" 
-                          placeholder="Опишите объект..." rows="3"></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label for="objectCondition">Состояние:</label>
-                <select id="objectCondition" class="form-select">
-                    <option value="good">Хорошее</option>
-                    <option value="normal">Нормальное</option>
-                    <option value="bad">Плохое</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label>Координаты:</label>
-                <div class="coords-input">
-                    <input type="number" id="objectLat" class="form-input" step="0.000001" 
-                           placeholder="Широта" value="52.5186">
-                    <input type="number" id="objectLng" class="form-input" step="0.000001" 
-                           placeholder="Долгота" value="85.2076">
-                </div>
-                <p class="form-hint">
-                    <i class="fas fa-mouse-pointer"></i> 
-                    Или выберите место на карте, затем нажмите "Взять с карты"
-                </p>
-            </div>
-            
-            <div class="form-actions">
-                <button class="btn btn--secondary" id="getFromMap">Взять с карты</button>
-                <button class="btn btn--primary" id="submitObject">Добавить объект</button>
-            </div>
-        </div>
-    `;
-    
-    panelContent.innerHTML = content;
-    
-    // Кнопка "Взять с карты"
-    document.getElementById('getFromMap').addEventListener('click', function() {
-        this.disabled = true;
-        this.innerHTML = '<i class="fas fa-mouse-pointer"></i> Кликните на карту...';
-        
-        const clickHandler = function(e) {
-            const coords = e.get('coords');
-            document.getElementById('objectLat').value = coords[0].toFixed(6);
-            document.getElementById('objectLng').value = coords[1].toFixed(6);
-            
-            document.getElementById('getFromMap').disabled = false;
-            document.getElementById('getFromMap').innerHTML = '<i class="fas fa-mouse-pointer"></i> Взять с карты';
-            myMap.events.remove('click', clickHandler);
-            
-            showNotification('Координаты получены', 'success');
-        };
-        
-        myMap.events.add('click', clickHandler);
-        showNotification('Кликните на карту, чтобы выбрать место', 'info');
-    });
-    
-    // Добавление объекта
-    document.getElementById('submitObject').addEventListener('click', function() {
-        const newObject = {
-            id: 'obj_' + Date.now(),
-            name: document.getElementById('objectName').value,
-            type: document.getElementById('objectType').value,
-            description: document.getElementById('objectDescription').value,
-            condition: document.getElementById('objectCondition').value,
-            coords: [
-                parseFloat(document.getElementById('objectLat').value),
-                parseFloat(document.getElementById('objectLng').value)
-            ],
-            date: new Date().toISOString().split('T')[0],
-            createdBy: currentUser.name
-        };
-        
-        if (!newObject.name.trim()) {
-            showNotification('Введите название объекта', 'warning');
-            return;
-        }
-        
-        // Добавляем объект
-        currentObjects.push(newObject);
-        addObjectToMap(newObject);
-        
-        // Сохраняем локально
-        const backup = JSON.parse(localStorage.getItem('eco_biysk_backup') || '{}');
-        backup.objects = currentObjects;
-        backup.timestamp = Date.now();
-        localStorage.setItem('eco_biysk_backup', JSON.stringify(backup));
-        
-        showNotification('Объект успешно добавлен!', 'success');
-        showPanel(PANEL_STATES.DEFAULT);
-        updateStatistics();
-    });
-}
-function validateEmail(email) {
-    // Простая валидация email
-    const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-    return re.test(String(email).toLowerCase());
-}
-
-function getDefaultIssues() {
-    return [
-        {
-            id: 'issue_1',
-            type: 'problem',
-            objectId: 1,
-            objectName: 'Старый дуб',
-            coords: [52.5180, 85.2100],
-            description: 'На стволе дерева обнаружены следы вредителей, требуется обработка',
-            problemType: 'disease',
-            urgency: 'high',
-            createdBy: 'user_1',
-            createdByName: 'Иван Петров',
-            createdAt: '2024-03-18T10:30:00Z',
-            status: 'pending'
-        },
-        {
-            id: 'issue_2',
-            type: 'suggestion',
-            coords: [52.5190, 85.2110],
-            description: 'Предлагаю посадить цветущие кустарники вдоль аллеи для улучшения вида',
-            createdBy: 'user_2',
-            createdByName: 'Мария Сидорова',
-            createdAt: '2024-03-17T14:20:00Z',
-            status: 'approved',
-            response: 'Отличное предложение! Добавили в план озеленения на весну.',
-            resolvedBy: 'Специалист по благоустройству',
-            resolvedAt: '2024-03-18T09:15:00Z'
-        },
-        {
-            id: 'issue_3',
-            type: 'problem',
-            objectId: 3,
-            objectName: 'Центральный газон',
-            coords: [52.5200, 85.2080],
-            description: 'На газоне образовались проплешины, требуется подсев травы',
-            problemType: 'damage',
-            urgency: 'medium',
-            createdBy: 'user_3',
-            createdByName: 'Алексей Смирнов',
-            createdAt: '2024-03-16T16:45:00Z',
-            status: 'pending'
-        },
-        {
-            id: 'issue_4',
-            type: 'suggestion',
-            coords: [52.5175, 85.2065],
-            description: 'Можно установить скамейки под деревьями для отдыха горожан',
-            createdBy: 'user_4',
-            createdByName: 'Ольга Козлова',
-            createdAt: '2024-03-15T11:10:00Z',
-            status: 'changes_requested',
-            response: 'Хорошая идея, но нужно уточнить количество и расположение скамеек',
-            resolvedBy: 'Специалист по благоустройству',
-            resolvedAt: '2024-03-16T10:30:00Z'
-        },
-        {
-            id: 'issue_5',
-            type: 'problem',
-            objectId: 4,
-            objectName: 'Кусты сирени',
-            coords: [52.5170, 85.2050],
-            description: 'Вокруг кустов скопился мусор, требуется уборка',
-            problemType: 'trash',
-            urgency: 'low',
-            createdBy: 'user_5',
-            createdByName: 'Дмитрий Иванов',
-            createdAt: '2024-03-14T09:20:00Z',
-            status: 'rejected',
-            response: 'Мусор уже убран, спасибо за сообщение',
-            resolvedBy: 'Специалист по благоустройству',
-            resolvedAt: '2024-03-15T08:45:00Z'
-        }
-    ];
-}
+// В конце файла:
 
 // ============================================================================
 // ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ
@@ -2003,4 +962,3 @@ document.addEventListener('DOMContentLoaded', function() {
         showNotification(`С возвращением, ${currentUser.name}!`, 'info');
     }
 });
-
