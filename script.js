@@ -4,7 +4,8 @@
 const CONFIG = {
     GITHUB_USERNAME: 'ecopuls22-sys',
     REPO_NAME: 'eco-biyisk-map',
-    DATA_FILE: 'data/objects.json'
+    DATA_FILE: 'data/objects.json',
+    API_BASE: ''
 };
 
 // URL для данных
@@ -57,7 +58,11 @@ ymaps.ready(async function init() {
     console.log('🌳 Экологическая карта Бийска - Загрузка...');
     
     // Загружаем сохраненного пользователя
-    loadSavedUser();
+    if (typeof loadSavedUser === 'function') {
+        loadSavedUser();
+    } else {
+        console.warn('⚠️ loadSavedUser не определена, пропускаем восстановление пользователя');
+    }
     
     // Создаем карту
     myMap = new ymaps.Map('map', {
@@ -98,14 +103,21 @@ async function loadData() {
     try {
         showNotification('Обновляем данные...', 'info');
         
-        const url = `${DATA_URL}?t=${Date.now()}&rand=${Math.random()}`;
-        const response = await fetch(url);
+        const apiBase = CONFIG.API_BASE || '';
+        const apiUrl = `${apiBase}/api/data`;
+        let response = await fetch(apiUrl);
+        let data;
         
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+        if (response.ok) {
+            data = await response.json();
+        } else {
+            const url = `${DATA_URL}?t=${Date.now()}&rand=${Math.random()}`;
+            response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            data = await response.json();
         }
-        
-        const data = await response.json();
         
         // Обновляем данные
         currentObjects = data.objects || [];
@@ -1734,7 +1746,6 @@ function showAddObjectForm() {
         updateStatistics();
     });
 }
-
 function validateEmail(email) {
     // Простая валидация email
     const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -1825,10 +1836,22 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('👤 Текущий пользователь:', currentUser);
     
     // Периодическое обновление времени
-    setInterval(updateLastUpdateTime, 60000);
+    if (typeof updateLastUpdateTime === 'function') {
+        setInterval(updateLastUpdateTime, 60000);
+    } else {
+        console.warn('⚠️ updateLastUpdateTime не определена, пропускаем обновление времени');
+    }
     
     // Проверяем, есть ли сохраненный пользователь
     if (currentUser.role !== ROLES.GUEST) {
         showNotification(`С возвращением, ${currentUser.name}!`, 'info');
     }
 });
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(error => {
+            console.warn('⚠️ Не удалось зарегистрировать service worker:', error);
+        });
+    });
+}
