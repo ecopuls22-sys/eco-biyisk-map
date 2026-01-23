@@ -501,7 +501,7 @@ body {
 
 .object-card__type.tree { background: #2E7D32; }
 .object-card__type.lawn { background: #4CAF50; }
-object-card__type.bush { background: #8BC34A; }
+.object-card__type.bush { background: #8BC34A; }
 
 .object-card__info {
     font-size: 14px;
@@ -613,7 +613,7 @@ object-card__type.bush { background: #8BC34A; }
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
-modal__content h3 {
+.modal__content h3 {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -777,7 +777,6 @@ modal__content h3 {
         justify-content: center;
     }
 }
-
 /* Стили для авторизации */
 .auth-modal {
   position: fixed;
@@ -964,7 +963,6 @@ modal__content h3 {
 .report-form.active {
   display: block;
 }
-
 /* ПАНЕЛЬ УПРАВЛЕНИЯ */
 .control-panel {
     position: fixed;
