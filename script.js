@@ -1855,3 +1855,4 @@ if ('serviceWorker' in navigator) {
         });
     });
 }
+
