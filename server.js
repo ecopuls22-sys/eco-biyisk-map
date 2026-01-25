@@ -5,6 +5,7 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const { Pool } = require('pg');
+const fs = require('fs');
 
 const app = express();
 
@@ -265,6 +266,24 @@ app.post('/api/polls', async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 });
+async function applySchemaIfNeeded() {
+  const schemaPath = path.join(__dirname, 'schema.sql');
+
+  if (!fs.existsSync(schemaPath)) {
+    console.log('ℹ️ schema.sql not found, skip schema apply');
+    return;
+  }
+
+  const sql = fs.readFileSync(schemaPath, 'utf8').trim();
+  if (!sql) {
+    console.log('ℹ️ schema.sql empty, skip schema apply');
+    return;
+  }
+
+  console.log('🛠 Applying schema.sql ...');
+  await pool.query(sql);
+  console.log('✅ schema.sql applied');
+}
 
 /* =========================
    STATIC (optional)
@@ -276,6 +295,19 @@ app.use(express.static(path.join(__dirname)));
    START
 ========================= */
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-});
+(async () => {
+  try {
+    if (!pool) {
+      console.error('❌ DATABASE_URL not configured, cannot start DB-backed API');
+    } else {
+      await applySchemaIfNeeded();
+    }
+
+    app.listen(PORT, () => {
+      console.log(`✅ Server running on port ${PORT}`);
+    });
+  } catch (e) {
+    console.error('❌ Failed to start:', e.message);
+    process.exit(1);
+  }
+})();
